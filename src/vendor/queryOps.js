@@ -53,7 +53,7 @@ function preSelector(columnName) {
 
 function selector(columnName) {
   /*
-     var row = { a: 1, b: '2', c: 3 };
+     const row = { a: 1, b: '2', c: 3 };
 
      convert string into function that selects property from row
          selector('b')(row) === '2'

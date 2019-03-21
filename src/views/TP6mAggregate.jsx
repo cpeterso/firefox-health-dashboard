@@ -8,6 +8,7 @@ import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
 import generateOptions from '../utils/chartJs/generateOptions';
 import { withErrorBoundary } from '../vendor/errors';
+import { jx } from '../vendor/expressions';
 
 class TP6mAggregate extends Component {
   constructor(props) {
@@ -21,6 +22,7 @@ class TP6mAggregate extends Component {
     // WHAT ARE THE SIGNATURES OF THE loadtime?
     const data = await getData(pages.select('framework'), {
       and: [
+        { eq: { platform: 'android-hw-g5-7-0-arm7-api-16' } },
         { prefix: { suite: 'raptor-tp6m-' } },
         { in: { test: frum(TP6_TESTS).select('id') } },
         {
@@ -30,11 +32,31 @@ class TP6mAggregate extends Component {
         },
       ],
     });
+    // DAILY AGGREGATE
+    // FOR EACH TEST
+    // SET NORMALIZATION CONSTANTS
+    // const minDate = Date.today().addMonths(-3);
+
+    frum(data)
+      .filter(jx({ gte: { datetime: { date: 'today-3month' } } }))
+      .edges([
+        'test',
+        {
+          value: 'datetime',
+          domain: {
+            type: 'time',
+            min: 'today-3month',
+            max: 'today',
+            interval: 'day',
+          },
+        },
+      ])
+      .select('value')
+      .aggregate('average');
+
+    frum(TP6_TESTS);
 
     this.setState({ data });
-
-    // DAILY AGGREGATE
-    // SET NORMALIZATION CONSTANTS
   }
 
   render() {
@@ -42,9 +64,15 @@ class TP6mAggregate extends Component {
 
     if (missing(data)) return null;
 
-    return (
-      <Chart type="line" data={data} height="200" options={generateOptions()} />
-    );
+    return frum(TP6_TESTS).map(({ id }) => (
+      <Chart
+        id={id}
+        type="line"
+        data={data}
+        height="200"
+        options={generateOptions()}
+      />
+    ));
   }
 }
 
