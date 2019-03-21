@@ -1,12 +1,13 @@
 import { parse } from 'query-string';
 import { frum, leaves, length, toPairs } from './queryOps';
+import { Log } from './errors';
 import {
+  exists,
   isArray,
   isFunction,
-  isNumeric,
   isObject,
+  isString,
   toArray,
-  exists,
 } from './utils';
 import strings from './strings';
 
@@ -14,15 +15,13 @@ function FromQueryString(query) {
   const decode = v => {
     if (isArray(v)) return v.map(decode);
 
-    if (v === null || v === 'true' || v === '') return true;
+    if (v === null || v === '') return true;
 
-    if (v === 'false') return false;
-
-    if (v === 'null') return null;
-
-    if (isNumeric(v)) return Number.parseFloat(v);
-
-    return v;
+    try {
+      return JSON.parse(v);
+    } catch (e) {
+      return v;
+    }
   };
 
   return toPairs(parse(query))
@@ -37,6 +36,16 @@ function toQueryString(value) {
       .filter(exists)
       .map(vv => {
         if (vv === true) return e(k);
+
+        if (isString(vv)) {
+          try {
+            JSON.parse(vv);
+
+            return `${e(k)}=${e(JSON.stringify(vv))}`;
+          } catch (e) {
+            // USE STANDARD ENCODING
+          }
+        }
 
         return `${e(k)}=${e(vv)}`;
       })
