@@ -99,9 +99,9 @@ const strings = {
     return v;
   },
 
-  replaceAll(value, find, replace){
+  replaceAll(value, find, replace) {
     return value.split(find).join(replace);
-  }
+  },
 };
 
 export default strings;

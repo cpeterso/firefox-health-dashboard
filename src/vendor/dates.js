@@ -624,9 +624,8 @@ Date.getTimezone = () => {
 // //////////////////////////////////////////////////////////////////////////////
 // WHAT IS THE MOST COMPACT DATE FORMAT TO DISTINGUISH THE RANGE
 // //////////////////////////////////////////////////////////////////////////////
-Date.niceFormat = ({  type, min, max, interval }) => {
-  if (!['date', 'time'].contains(type))
-    Log.error('Expecting a time domain');
+Date.niceFormat = ({ type, min, max, interval }) => {
+  if (!['date', 'time'].contains(type)) Log.error('Expecting a time domain');
 
   let minFormat = 0; // SECONDS
 
