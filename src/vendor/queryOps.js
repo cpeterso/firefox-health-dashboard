@@ -16,6 +16,7 @@ import {
   isFunction,
 } from './utils';
 import { sum } from './math';
+import { Log } from './logs';
 import Data from './Data';
 import { jx } from './expressions';
 
@@ -400,7 +401,7 @@ class ArrayWrapper {
       if (!(key in output)) {
         output[key] = row;
       } else {
-        throw new Error('expecting index to be unique');
+        Log.error('expecting index to be unique');
       }
     }
 

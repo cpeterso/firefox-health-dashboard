@@ -94,13 +94,14 @@ const withErrorBoundary = WrappedComponent => {
       }
     }
 
-    componentDidCatch(error, info) {
+    componentDidCatch(err, info) {
+      const error = Exception.wrap(err, info);
+
       this.setState({ error });
 
       reportOrLog(error, info);
 
-      // eslint-disable-next-line no-console
-      console.warn(error);
+      Log.warning(error);
     }
 
     async componentDidMount() {

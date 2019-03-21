@@ -2,7 +2,11 @@
 import {
   value2json,
   json2value,
+<<<<<<< HEAD
   toQueryString,
+=======
+  ToQueryString,
+>>>>>>> logs
   FromQueryString,
 } from '../../src/vendor/convert';
 
@@ -47,6 +51,7 @@ describe('convert', () => {
     [{ a: '{}' }, 'a=%7B%7D'],
     [{ a: '=' }, 'a=%3D'],
     [{ a: '+' }, 'a=%2B'],
+<<<<<<< HEAD
     [{ a: false }, 'a=false'],
     [{ a: true }, 'a'],
     // https://www.w3.org/Addressing/URL/uri-spec.html#z5
@@ -55,6 +60,10 @@ describe('convert', () => {
     [{ a: ' ' }, 'a=+'],
     [{ a: '  ' }, 'a=++'],
     [{ a: 'blue+light blue' }, 'a=blue%2Blight+blue'],
+=======
+    [{ a: ' ' }, 'a=+'],
+    [{ a: '  ' }, 'a=++'],
+>>>>>>> logs
     [{ a: '{"test":42}' }, 'a=%7B%22test%22%3A42%7D'],
     [{ a: { test: 42 } }, 'a.test=42'],
     [{ a: [1, 2, 3] }, 'a=1&a=2&a=3'],
@@ -67,6 +76,7 @@ describe('convert', () => {
     [{ a: 'ståle' }, 'a=st%C3%A5le'],
   ];
 
+<<<<<<< HEAD
   it('toQueryString1', () => {
     reversable.forEach(([obj, url]) => expect(toQueryString(obj)).toEqual(url));
   });
@@ -125,5 +135,13 @@ describe('convert', () => {
 
   it('KeyWithoutValueIsTruthy', () => {
     expect(FromQueryString('a').a).toBeTruthy();
+=======
+  it('ToQueryString', () => {
+    URLS.forEach(([obj, url]) => expect(ToQueryString(obj)).toEqual(url));
+  });
+
+  it('FromQueryString', () => {
+    URLS.forEach(([obj, url]) => expect(FromQueryString(url)).toEqual(obj));
+>>>>>>> logs
   });
 });
