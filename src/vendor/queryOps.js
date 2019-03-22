@@ -414,6 +414,10 @@ function frum(list) {
     return list;
   }
 
+  if (list instanceof Cube){
+    return new ArrayWrapper(list[Symbol.iterator]);
+  }
+
   return new ArrayWrapper(function* outputGen() {
     for (const v of list) yield [v];
   });

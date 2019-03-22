@@ -100,6 +100,14 @@ function literalField(fieldname) {
   return fieldname.replace(/\./g, '\\.');
 }
 
+/*
+expecting Array of Arrays, return transpose
+ */
+function zip(args) {
+  const length = max(args.map(a => a.length));
+  return Array(length).map((_,i)=>args.map(a => a[i]));
+}
+
 function splitField(fieldname) {
   return fieldname
     .replace(/\\\./g, '\b')

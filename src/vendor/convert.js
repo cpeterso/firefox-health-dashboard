@@ -1,6 +1,6 @@
 import { parse } from 'query-string';
 import { frum, leaves, length, toPairs } from './queryOps';
-import { Log } from './errors';
+import { Log } from './logs';
 import {
   exists,
   isArray,
@@ -11,7 +11,7 @@ import {
 } from './utils';
 import strings from './strings';
 
-function FromQueryString(query) {
+function fromQueryString(query) {
   const decode = v => {
     if (isArray(v)) return v.map(decode);
 
@@ -133,4 +133,4 @@ function value2json(json) {
   return prettyJSON(json, 30);
 }
 
-export { FromQueryString, toQueryString, value2json, json2value };
+export { fromQueryString, toQueryString, value2json, json2value };

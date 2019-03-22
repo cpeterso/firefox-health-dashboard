@@ -3,8 +3,8 @@
 import {
   value2json,
   json2value,
-  ToQueryString,
-  FromQueryString,
+  toQueryString,
+  fromQueryString,
 } from '../../src/vendor/convert';
 
 describe('convert', () => {
@@ -77,12 +77,12 @@ describe('convert', () => {
     reversable.forEach(obj =>
       expect(
         (() => {
-          const qs = ToQueryString(obj);
+          const qs = toQueryString(obj);
 
           // eslint-disable-next-line no-console
           console.log(`${JSON.stringify(obj)}  <=>  ${JSON.stringify(qs)}`);
 
-          return FromQueryString(qs);
+          return fromQueryString(qs);
         })()
       ).toEqual(obj)
     );
@@ -95,8 +95,8 @@ describe('convert', () => {
     [{ a: '  ' }, 'a=++'],
   ];
 
-  it('ToQueryString', () => {
-    toQuery.forEach(([obj, url]) => expect(ToQueryString(obj)).toEqual(url));
+  it('toQueryString', () => {
+    toQuery.forEach(([obj, url]) => expect(toQueryString(obj)).toEqual(url));
   });
 
   const nonStandardQueryStrings = [
@@ -135,11 +135,11 @@ describe('convert', () => {
 
   it('AcceptNonStandardQueryStrings', () => {
     nonStandardQueryStrings.forEach(([obj, url]) =>
-      expect(FromQueryString(url)).toEqual(obj)
+      expect(fromQueryString(url)).toEqual(obj)
     );
   });
 
   it('KeyWithoutValueIsTruthy', () => {
-    expect(FromQueryString('a').a).toBeTruthy();
+    expect(fromQueryString('a').a).toBeTruthy();
   });
 });

@@ -2,115 +2,109 @@
 /* eslint-disable max-len */
 /* eslint-disable no-underscore-dangle */
 
-import { isNumeric, coalesce } from './utils';
+import { coalesce, exists, isNumeric, isString, last, isInteger } from './utils';
 import { Duration } from './durations';
-import { sign, ceiling, floor, abs, round } from './math';
+import { abs, ceiling, floor, round, sign } from './math';
+import { Log } from './logs';
 
-const Date = value => {
+class Dates extends Date {
+  constructor(value){
+    super(value)
+  }
+}
+
+
+Dates.newInstance = value => {
   if (value === undefined || value === null) return null;
 
-  if (typeof value === 'string') {
-    const newval = Date.tryParse(value);
+  if (isString(value)) {
+    const newval = Dates.tryParse(value);
 
     if (newval !== null) return newval;
-  } // endif
+  }
 
   if (isNumeric(value)) {
-    value -= 0;
+    Number.parseFloat(value);
 
     if (value <= 9999999999) {
       // TOO SMALL, MUST BE A UNIX TIMESTAMP
-      return new Date(value * 1000);
+      return new Dates(value * 1000);
     }
 
-    return new Date(value);
-    // endif
-  } // endif
+    return new Dates(value);
+  }
 
-  return new Date(value);
-}; // method
+  return new Dates(value);
+};
 
-if (Date.now) {
-  Date.currentTimestamp = Date.now;
-} else {
-  Date.currentTimestamp = function currentTimestamp() {
-    new Date().getTime();
-  }; // method
-} // endif
+Dates.currentTimestamp = Date.now;
 
-Date.now = () => new Date(); // method
+Dates.now = () => new Dates();
 
-Date.eod = () => new Date().ceilingDay(); // method
+Dates.eod = () => new Dates().ceilingDay();
 
-Date.today = () => new Date().floorDay(); // method
+Dates.today = () => new Dates().floorDay();
 
-Date.min = () => {
+Dates.min = (...args) => {
   let min = null;
 
-  for (let i = 0; i < arguments.length; i += 1) {
-    const v = arguments[i];
-
-    if (v === undefined || v === null) continue;
+  args.forEach(v => {
+    if (v === undefined || v === null) return;
 
     if (min === null || min > v) min = v;
-  } // for
+  });
 
   return min;
-}; // method
+};
 
-Date.max = (...args) => {
+Dates.max = (...args) => {
   let max = null;
 
   args.forEach(a => {
     if (a === null) return;
 
-    if (max === null || max < arguments[i]) max = a;
-  }); // for
+    if (max === null || max < a) max = a;
+  });
 
   return max;
-}; // method
+};
 
-Date.prototype.getMilli = Date.prototype.getTime;
-Date.prototype.milli = Date.prototype.getTime;
-Date.prototype.unix = () =>
+Dates.prototype.getMilli = Dates.prototype.getTime;
+Dates.prototype.milli = Dates.prototype.getTime;
+Dates.prototype.unix = () =>
   // RETURN NUMBER OF SECONDS SINCE EPOCH
   this.milli() / 1000.0; // function
 
-Date.prototype.between = (min, max) => {
-  if (min === null) return null; // NULL MEANS UNKNOWN, SO between() IS UNKNOWN
-
-  if (max === null) return null;
-
-  // UNDEFINED MEANS DO-NOT-CARE
-  if (min !== undefined) {
-    if (min.getMilli) min = min.getMilli();
+Dates.prototype.between = (min, max) => {
+  if (exists(min)) {
+    if (min.getMilli && this.getMilli() < min.getMilli()) return false;
 
     if (this.getMilli() < min) return false;
-  } // endif
+  }
 
-  if (max !== undefined) {
-    if (max.getMilli) max = max.getMilli();
+  if (exists(max)) {
+    if (max.getMilli && max.getMilli() < this.getMilli()) return false;
 
     if (max <= this.getMilli()) return false;
-  } // endif
+  }
 
   return true;
-}; // method
+};
 
-Date.prototype.add = interval => {
+Dates.prototype.add = interval => {
   if (interval === undefined || interval === null) {
     Log.error('expecting an interval to add');
-  } // endif
+  }
 
   const i = Duration.newInstance(interval);
   const addMilli = i.milli - Duration.MILLI_VALUES.month * i.month;
 
   return this.addMonth(i.month).addMilli(addMilli);
-}; // method
+};
 
-Date.prototype.subtract = (time, interval) => {
+Dates.prototype.subtract = (time, interval) => {
   if (typeof time === 'string')
-    Log.error('expecting to subtract a Duration or Date object, not a string');
+    Log.error('expecting to subtract a Duration or Dates object, not a string');
 
   if (interval === undefined || interval.month === 0) {
     if (time.getMilli) {
@@ -122,56 +116,51 @@ Date.prototype.subtract = (time, interval) => {
     const residue = time.milli - Duration.MILLI_VALUES.month * time.month;
 
     return this.addMonth(-time.month).addMilli(-residue);
-    // endif
   }
 
   if (time.getMilli) {
     // SUBTRACT TIME
-    return Date.diffMonth(this, time);
+    return Dates.diffMonth(this, time);
   }
 
   // SUBTRACT DURATION
   return this.addMilli(-time.milli);
-  // endif
-  // endif
-}; // method
+};
 
 // RETURN THE NUMBER OF WEEKDAYS BETWWEN GIVEN TIMES
-Date.diffWeekday = (endTime, startTime) => {
+Dates.diffWeekday = (endTime_, startTime_) => {
   let out = 0;
 
-  {
-    // TEST
-    if (startTime <= endTime) {
-      for (
-        let d = startTime;
-        d.getMilli() < endTime.getMilli();
-        d = d.addDay(1)
-      ) {
-        if (![6, 0].contains(d.dow())) out += 1;
-      } // for
-    } else {
-      for (
-        let d = endTime;
-        d.getMilli() < startTime.getMilli();
-        d = d.addDay(1)
-      ) {
-        if (![6, 0].contains(d.dow())) out -= 1;
-      } // for
-    } // endif
+  // TEST
+  if (startTime_ <= endTime_) {
+    for (
+      let d = startTime_;
+      d.getMilli() < endTime_.getMilli();
+      d = d.addDay(1)
+    ) {
+      if (![6, 0].includes(d.dow())) out += 1;
+    }
+  } else {
+    for (
+      let d = endTime_;
+      d.getMilli() < startTime_.getMilli();
+      d = d.addDay(1)
+    ) {
+      if (![6, 0].includes(d.dow())) out -= 1;
+    }
   }
 
   // SHIFT SO SATURDAY IS START OF WEEK
-  endTime = endTime.addDay(1);
-  startTime = startTime.addDay(1);
+  let endTime = endTime_.addDay(1);
+  let startTime = startTime_.addDay(1);
 
-  if ([0, 1].contains(startTime.dow())) {
+  if ([0, 1].includes(startTime.dow())) {
     startTime = startTime.floorWeek().addDay(2);
-  } // endif
+  }
 
-  if ([0, 1].contains(endTime.dow())) {
+  if ([0, 1].includes(endTime.dow())) {
     endTime = endTime.floorWeek();
-  } // endif
+  }
 
   const startWeek = startTime.addWeek(1).floorWeek();
   const endWeek = endTime.addMilli(-1).floorWeek();
@@ -186,9 +175,9 @@ Date.diffWeekday = (endTime, startTime) => {
     Log.error('Weekday calculation failed internal test');
 
   return output;
-}; // method
+};
 
-Date.diffMonth = (endTime, startTime) => {
+Dates.diffMonth = (endTime, startTime) => {
   // MAKE SURE WE HAVE numMonths THAT IS TOO BIG;
   let numMonths = floor(
     ((endTime.getMilli() -
@@ -234,187 +223,181 @@ Date.diffMonth = (endTime, startTime) => {
   //  if (output.milli>=Duration.MILLI_VALUES.day*31)
   //    Log.error("problem");
   return output;
-}; // method
+};
 
-Date.prototype.dow = Date.prototype.getUTCDay;
+Dates.prototype.dow = Dates.prototype.getUTCDay;
 
 // CONVERT THIS GMT DATE TO LOCAL DATE
-Date.prototype.addTimezone = () => this.addMinute(-this.getTimezoneOffset());
+Dates.prototype.addTimezone = () => this.addMinute(-this.getTimezoneOffset());
 
 // CONVERT THIS LOCAL DATE TO GMT DATE
-Date.prototype.subtractTimezone = () =>
+Dates.prototype.subtractTimezone = () =>
   this.addMinute(this.getTimezoneOffset());
 
-Date.prototype.addMilli = value => new Date(this.getMilli() + value); // method
+Dates.prototype.addMilli = value => new Dates(this.getMilli() + value);
 
-Date.prototype.addSecond = value => {
-  const output = new Date(this);
+Dates.prototype.addSecond = value => {
+  const output = new Dates(this);
 
   output.setUTCSeconds(this.getUTCSeconds() + value);
 
   return output;
-}; // method
+};
 
-Date.prototype.addMinute = value => {
-  const output = new Date(this);
+Dates.prototype.addMinute = value => {
+  const output = new Dates(this);
 
   output.setUTCMinutes(this.getUTCMinutes() + value);
 
   return output;
-}; // method
+};
 
-Date.prototype.addHour = value => {
-  const output = new Date(this);
+Dates.prototype.addHour = value => {
+  const output = new Dates(this);
 
   output.setUTCHours(this.getUTCHours() + value);
 
   return output;
-}; // method
+};
 
-Date.prototype.addDay = value => {
+Dates.prototype.addDay = value => {
   const value_ = coalesce(value, 1);
-  const output = new Date(this);
+  const output = new Dates(this);
 
   output.setUTCDate(this.getUTCDate() + value_);
 
   return output;
-}; // method
+};
 
-Date.prototype.addWeekday = value => {
+Dates.prototype.addWeekday = value => {
   let output = this.addDay(1);
 
-  if ([0, 1].contains(output.dow())) output = output.floorWeek().addDay(2);
+  if ([0, 1].includes(output.dow())) output = output.floorWeek().addDay(2);
 
   const weeks = floor(value / 5);
 
-  value -= weeks * 5;
-  output = output.addDay(value);
+  output = output.addDay(value - weeks * 5);
 
-  if ([0, 1].contains(output.dow())) output = output.floorWeek().addDay(2);
+  if ([0, 1].includes(output.dow())) output = output.floorWeek().addDay(2);
 
   output = output.addWeek(weeks).addDay(-1);
 
   return output;
-}; // method
+};
 
-Date.prototype.addWeek = value => {
+Dates.prototype.addWeek = value => {
   const value_ = coalesce(value, 1);
-  const output = new Date(this);
+  const output = new Dates(this);
 
   output.setUTCDate(this.getUTCDate() + value_ * 7);
 
   return output;
-}; // method
+};
 
-Date.prototype.addMonth = value => {
+Dates.prototype.addMonth = value => {
   if (value === 0) return this; // WHOA! SETTING MONTH IS CRAZY EXPENSIVE!!
-  const output = new Date(this);
+  const output = new Dates(this);
 
   output.setUTCMonth(this.getUTCMonth() + value);
 
   return output;
-}; // method
+};
 
-Date.prototype.addYear = value => {
-  const output = new Date(this);
+Dates.prototype.addYear = value => {
+  const output = new Dates(this);
 
   output.setUTCFullYear(this.getUTCFullYear() + value);
 
   return output;
-}; // method
+};
 
 // RETURN A DATE ROUNDED DOWN TO THE CLOSEST FULL INTERVAL
-Date.prototype.floor = (interval, minDate) => {
-  if (minDate === undefined) {
-    if (interval.month !== undefined && interval.month > 0) {
-      if (interval.month % 12 === 0) {
-        return this.addMonth(-interval.month + 12).floorYear();
-      }
+Dates.prototype.floor = (interval, minDate) => {
+  if (exists(minDate))
+    return minDate.add(this.subtract(minDate).floor(interval));
 
-      if ([1, 2, 3, 4, 6].contains(interval.month)) {
-        const temp = this.floorYear();
+  if (exists(interval.month) && interval.month > 0) {
+    if (interval.month % 12 === 0) {
+      return this.addMonth(-interval.month + 12).floorYear();
+    }
 
-        return temp.add(this.subtract(temp).floor(interval));
-      }
+    if ([1, 2, 3, 4, 6].includes(interval.month)) {
+      const temp = this.floorYear();
 
-      Log.error(`Can not floor interval '${interval.toString()}'`);
-      // endif
-    } // endif
+      return temp.add(this.subtract(temp).floor(interval));
+    }
 
-    let intervalStr;
+    Log.error(`Can not floor interval '${interval.toString()}'`);
+  }
 
-    if (interval.milli !== undefined) {
-      intervalStr = interval.toString();
-    } else {
-      intervalStr = interval;
-      interval = Duration.newInstance(intervalStr);
-    } // endif
+  let intervalStr = interval;
 
-    if (intervalStr.indexOf('year') >= 0) return this.floorYear();
+  if (interval.milli !== undefined) {
+    intervalStr = interval.toString();
+  }
 
-    if (intervalStr.indexOf('month') >= 0) return this.floorMonth();
+  if (intervalStr.indexOf('year') >= 0) return this.floorYear();
 
-    if (intervalStr.indexOf('week') >= 0) return this.floorWeek();
+  if (intervalStr.indexOf('month') >= 0) return this.floorMonth();
 
-    if (intervalStr.indexOf('day') >= 0) return this.floorDay();
+  if (intervalStr.indexOf('week') >= 0) return this.floorWeek();
 
-    if (intervalStr.indexOf('hour') >= 0) return this.floorHour();
-    Log.error(`Can not floor interval '${intervalStr}'`);
-  } // endif
+  if (intervalStr.indexOf('day') >= 0) return this.floorDay();
 
-  return minDate.add(this.subtract(minDate).floor(interval));
-}; // method
+  if (intervalStr.indexOf('hour') >= 0) return this.floorHour();
+  Log.error(`Can not floor interval '${intervalStr}'`);
+};
 
-Date.prototype.floorYear = () => {
-  const output = new Date(this);
+Dates.prototype.floorYear = () => {
+  const output = new Dates(this);
 
   output.setUTCMonth(0, 1);
   output.setUTCHours(0, 0, 0, 0);
 
   return output;
-}; // method
+};
 
-Date.prototype.floorMonth = () => {
-  const output = new Date(this);
+Dates.prototype.floorMonth = () => {
+  const output = new Dates(this);
 
   output.setUTCDate(1);
   output.setUTCHours(0, 0, 0, 0);
 
   return output;
-}; // method
+};
 
-Date.prototype.floorWeek = () => {
-  const output = new Date(this);
+Dates.prototype.floorWeek = () => {
+  const output = new Dates(this);
 
   output.setUTCDate(this.getUTCDate() - this.getUTCDay());
   output.setUTCHours(0, 0, 0, 0);
 
   return output;
-}; // method
+};
 
-Date.prototype.floorDay = () => {
-  const output = new Date(this);
+Dates.prototype.floorDay = () => {
+  const output = new Dates(this);
 
   output.setUTCHours(0, 0, 0, 0);
 
   return output;
-}; // method
+};
 
-Date.prototype.floorHour = () => {
-  const output = new Date(this);
+Dates.prototype.floorHour = () => {
+  const output = new Dates(this);
 
   output.setUTCMinutes(0);
 
   return output;
-}; // method
+};
 
-Date.prototype.ceilingDay = () => this.floorDay().addDay(1); // method
+Dates.prototype.ceilingDay = () => this.floorDay().addDay(1);
 
-Date.prototype.ceilingWeek = () => this.floorWeek().addWeek(1); // method
+Dates.prototype.ceilingWeek = () => this.floorWeek().addWeek(1);
 
-Date.prototype.ceilingMonth = () => this.floorMonth().addMonth(1); // method
+Dates.prototype.ceilingMonth = () => this.floorMonth().addMonth(1);
 
-Date.prototype.ceiling = interval => this.floor(interval).add(interval); // method
+Dates.prototype.ceiling = interval => this.floor(interval).add(interval);
 
 // ------------------------------------------------------------------
 // These functions use the same 'format' strings as the
@@ -448,7 +431,7 @@ Date.prototype.ceiling = interval => this.floor(interval).add(interval); // meth
 //  "MMM dd, yyyy hh:mm:ssa" matches: "January 01, 2000 12:30:45AM"
 // ------------------------------------------------------------------
 
-Date.MONTH_NAMES = [
+Dates.MONTH_NAMES = [
   'January',
   'February',
   'March',
@@ -474,7 +457,7 @@ Date.MONTH_NAMES = [
   'Nov',
   'Dec',
 ];
-Date.DAY_NAMES = [
+Dates.DAY_NAMES = [
   'Sunday',
   'Monday',
   'Tuesday',
@@ -490,9 +473,10 @@ Date.DAY_NAMES = [
   'Fri',
   'Sat',
 ];
-Date.LZ = x => (x < 0 || x > 9 ? '' : '0') + x;
 
-Date.KEYS = [
+const twoDigits = x => (x < 0 || x > 9 ? '' : '0') + x;
+
+Dates.KEYS = [
   'ffffff',
   'hours',
   'yyyy',
@@ -524,11 +508,11 @@ Date.KEYS = [
 ];
 
 // ------------------------------------------------------------------
-// formatDate (date_object, format)
+// formatDate(date_object, format);
 // Returns a date in the output format specified.
 // The format string uses the same abbreviations as in getDateFromFormat()
 // ------------------------------------------------------------------
-Date.prototype.format = format => {
+Dates.prototype.format = format => {
   const y = `${this.getUTCFullYear()}`;
   const M = this.getUTCMonth() + 1;
   const d = this.getUTCDate();
@@ -543,9 +527,9 @@ Date.prototype.format = format => {
   v.yyyy = y;
   v.yy = y.substring(2, 4);
   v.M = M;
-  v.MM = Date.LZ(M);
-  v.MMM = Date.MONTH_NAMES[M - 1];
-  v.NNN = Date.MONTH_NAMES[M + 11];
+  v.MM = twoDigits(M);
+  v.MMM = Dates.MONTH_NAMES[M - 1];
+  v.NNN = Dates.MONTH_NAMES[M + 11];
   v.days = (() => {
     if (d === 1) return '';
 
@@ -554,23 +538,23 @@ Date.prototype.format = format => {
     return `${d - 1} days`;
   })();
   v.d = d;
-  v.dd = Date.LZ(d);
-  v.E = Date.DAY_NAMES[E + 7];
-  v.EE = Date.DAY_NAMES[E];
+  v.dd = twoDigits(d);
+  v.E = Dates.DAY_NAMES[E + 7];
+  v.EE = Dates.DAY_NAMES[E];
   v.H = H;
-  v.HH = Date.LZ(H);
+  v.HH = twoDigits(H);
   v.h = ((H + 11) % 12) + 1;
-  v.hh = Date.LZ(v.h);
+  v.hh = twoDigits(v.h);
   v.hours = `${(d - 1) * H} hours`;
   v.K = H % 12;
-  v.KK = Date.LZ(v.K);
+  v.KK = twoDigits(v.K);
   v.k = H + 1;
-  v.kk = Date.LZ(v.k);
+  v.kk = twoDigits(v.k);
   v.a = ['AM', 'PM'][floor(H / 12)];
   v.m = m;
-  v.mm = Date.LZ(m);
+  v.mm = twoDigits(m);
   v.s = s;
-  v.ss = Date.LZ(s);
+  v.ss = twoDigits(s);
   v.fff = f;
   v.ffffff = f * 1000;
 
@@ -579,25 +563,25 @@ Date.prototype.format = format => {
   for (let index = 0; index < format.length; index += 1) {
     let i = 0;
 
-    for (; i < Date.KEYS.length; i += 1) {
-      const k = Date.KEYS[i];
+    for (; i < Dates.KEYS.length; i += 1) {
+      const k = Dates.KEYS[i];
 
       if (format.substring(index, index + k.length) === k) {
         output += v[k];
         index += k.length - 1;
         break;
-      } // endif
-    } // for
+      }
+    }
 
-    if (i === Date.KEYS.length) {
+    if (i === Dates.KEYS.length) {
       output += format.charAt(index);
-    } // endif
-  } // for
+    }
+  }
 
   return output;
 };
 
-Date.Timezones = {
+Dates.Timezones = {
   GMT: 0,
   EST: -5,
   CST: -6,
@@ -605,10 +589,10 @@ Date.Timezones = {
   PST: -8,
 };
 
-Date.getTimezone = () => {
-  Log.warning('Date.getTimezone is incomplete!');
-  Date.getTimezone = () => {
-    const offset = new Date().getTimezoneOffset();
+Dates.getTimezone = () => {
+  Log.warning('Dates.getTimezone is incomplete!');
+  Dates.getTimezone = () => {
+    const offset = new Dates().getTimezoneOffset();
 
     // CHEAT AND SIMPLY GUESS
     if (offset === 240 || offset === 300) return 'EDT';
@@ -618,14 +602,14 @@ Date.getTimezone = () => {
     return `(${round(offset / 60)}GMT)`;
   };
 
-  return Date.getTimezone();
+  return Dates.getTimezone();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // WHAT IS THE MOST COMPACT DATE FORMAT TO DISTINGUISH THE RANGE
 // //////////////////////////////////////////////////////////////////////////////
-Date.niceFormat = ({ type, min, max, interval }) => {
-  if (!['date', 'time'].contains(type)) Log.error('Expecting a time domain');
+Dates.niceFormat = ({ type, min, max, interval }) => {
+  if (!['date', 'time'].includes(type)) Log.error('Expecting a time domain');
 
   let minFormat = 0; // SECONDS
 
@@ -680,9 +664,9 @@ Date.niceFormat = ({ type, min, max, interval }) => {
     ['', '', '', '', 'NNN', 'NNN yyyy'],
     ['', '', '', '', '', 'yyyy'],
   ][minFormat][maxFormat];
-}; // method
+};
 
-Date.getBestInterval = (minDate, maxDate, requestedInterval, { min, max }) => {
+Dates.getBestInterval = (minDate, maxDate, requestedInterval, { min, max }) => {
   let dur = maxDate.subtract(minDate);
 
   if (dur.milli > Duration.MONTH.milli * min) {
@@ -717,20 +701,7 @@ Date.getBestInterval = (minDate, maxDate, requestedInterval, { min, max }) => {
   }
 };
 
-// ------------------------------------------------------------------
-// Utility functions for parsing in getDateFromFormat()
-// ------------------------------------------------------------------
-function _isInteger(val) {
-  const digits = '1234567890';
 
-  for (let i = 0; i < val.length; i += 1) {
-    if (digits.indexOf(val.charAt(i)) === -1) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 function _getInt(str, i, minlength, maxlength) {
   for (let x = maxlength; x >= minlength; x -= 1) {
@@ -740,7 +711,7 @@ function _getInt(str, i, minlength, maxlength) {
       return null;
     }
 
-    if (_isInteger(token)) {
+    if (isInteger(token)) {
       return token;
     }
   }
@@ -754,12 +725,12 @@ function internalChecks(year, month, date, hh_, mm, ss, fff, ampm) {
     // LEAP YEAR
     if ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) {
       if (date > 29) return 0;
-    } else if (date > 28) return 0; // endif
-  } // endif
+    } else if (date > 28) return 0;
+  }
 
   if (month === 4 || month === 6 || month === 9 || month === 11) {
     if (date > 30) return 0;
-  } // endif
+  }
 
   // Correct hours value
   let hh = hh_;
@@ -768,13 +739,13 @@ function internalChecks(year, month, date, hh_, mm, ss, fff, ampm) {
     hh = hh_ - 0 + 12;
   } else if (hh_ > 11 && ampm === 'AM') {
     hh -= 12;
-  } // endif
+  }
 
-  const newDate = new Date(Date.UTC(year, month - 1, date, hh, mm, ss, fff));
+  const newDate = new Dates(Dates.UTC(year, month - 1, date, hh, mm, ss, fff));
 
-  // newDate=newDate.addMinutes(new Date().getTimezoneOffset());
+  // newDate=newDate.addMinutes(new Dates().getTimezoneOffset());
   return newDate;
-} // method
+}
 
 // ------------------------------------------------------------------
 // getDateFromFormat( date_string , format_string, isPastDate )
@@ -787,7 +758,7 @@ function internalChecks(year, month, date, hh_, mm, ss, fff, ampm) {
 // OUT A TIMESHEET (FOR EXAMPLE) OR IN THE FUTURE (false) WHEN
 // SETTING AN APPOINTMENT DATE
 // ------------------------------------------------------------------
-Date.getDateFromFormat = (val_, format_, isPastDate) => {
+Dates.getDateFromFormat = (val_, format_, isPastDate) => {
   const val = `${val_}`;
   const format = `${format_}`;
   let valueIndex = 0;
@@ -795,7 +766,7 @@ Date.getDateFromFormat = (val_, format_, isPastDate) => {
   let token = '';
   let x;
   let y;
-  const now = new Date();
+  const now = new Dates();
   // DATE BUILDING VARIABLES
   let year = null;
   let month = now.getMonth() + 1;
@@ -847,8 +818,8 @@ Date.getDateFromFormat = (val_, format_, isPastDate) => {
     } else if (token === 'MMM' || token === 'NNN') {
       month = 0;
 
-      for (let i = 0; i < Date.MONTH_NAMES.length; i += 1) {
-        const monthName = Date.monthNameS[i];
+      for (let i = 0; i < Dates.MONTH_NAMES.length; i += 1) {
+        const monthName = Dates.monthNameS[i];
         let prefixLength = 0;
 
         while (
@@ -876,8 +847,8 @@ Date.getDateFromFormat = (val_, format_, isPastDate) => {
         return 0;
       }
     } else if (token === 'EE' || token === 'E') {
-      for (let i = 0; i < Date.DAY_NAMES.length; i += 1) {
-        const dayName = Date.DAY_NAMES[i];
+      for (let i = 0; i < Dates.DAY_NAMES.length; i += 1) {
+        const dayName = Dates.DAY_NAMES[i];
 
         if (
           val
@@ -990,7 +961,7 @@ Date.getDateFromFormat = (val_, format_, isPastDate) => {
       }
 
       valueIndex += token.length;
-    } // endif
+    }
   }
 
   // If there are any trailing characters left in the value, it doesn't match
@@ -1020,11 +991,10 @@ Date.getDateFromFormat = (val_, format_, isPastDate) => {
     if (newDate !== 0 && `${newDate}` > `${oldDate}`) return newDate;
 
     return internalChecks(year + 1, month, dayOfMonth, hh, mm, ss, fff, ampm);
-    // endif
-  } // endif
+  }
 
   return internalChecks(year, month, dayOfMonth, hh, mm, ss, fff, ampm);
-}; // method
+};
 
 // ------------------------------------------------------------------
 // parseDate( date_string [,isPastDate])
@@ -1068,50 +1038,52 @@ Date.getDateFromFormat = (val_, format_, isPastDate) => {
     'd - M',
   ];
 
-  Date.CheckList = []
-    .extend(generalFormats)
-    .extend(dateFirst)
-    .extend(monthFirst);
+  Dates.CheckList = []
+    .push(...generalFormats)
+    .push(...dateFirst)
+    .push(...monthFirst);
 }
 
-Date.tryParse = (val_, isFutureDate) => {
+Dates.tryParse = (val_, isFutureDate) => {
   const val = val_.trim();
   let d = null;
 
-  for (let i = 0; i < Date.CheckList.length; i += 1) {
-    d = Date.getDateFromFormat(
+  for (let i = 0; i < Dates.CheckList.length; i += 1) {
+    d = Dates.getDateFromFormat(
       val,
-      Date.CheckList[i],
+      Dates.CheckList[i],
       !coalesce(isFutureDate, false)
     );
 
     if (d !== 0) {
-      const temp = Date.CheckList[i];
+      const temp = Dates.CheckList[i];
 
-      Date.CheckList.splice(i, 1);
-      Date.CheckList.prepend(temp);
+      Dates.CheckList.splice(i, 1);
+      Dates.CheckList.prepend(temp);
 
       return d;
-    } // endif
-  } // for
+    }
+  }
 
   return null;
-}; // method
+};
 
-Date.EPOCH = Date.newInstance('1/1/1970');
+Dates.EPOCH = Dates.newInstance('1/1/1970');
 
-Date.range = ({ min, max, interval }) => {
+Dates.range = ({ min, max, interval }) => {
   const output = [];
-  const min_ = Date.newInstance(min);
-  const max_ = Date.newInstance(max);
+  const min_ = Dates.newInstance(min);
+  const max_ = Dates.newInstance(max);
   const interval_ = Duration.newInstance(interval);
   let acc = min_;
 
   for (; acc < max_; acc = acc.add(interval_)) {
     output.push(acc);
-  } // for
+  }
 
   return output;
 };
 
-export { Date }; // eslint-disable-line import/prefer-default-export
+
+const Date = Dates;
+export {Date};

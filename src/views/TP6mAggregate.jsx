@@ -8,7 +8,8 @@ import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
 import generateOptions from '../utils/chartJs/generateOptions';
 import { withErrorBoundary } from '../vendor/errors';
-import { jx } from '../vendor/expressions';
+import { jx, edges } from '../vendor/expressions';
+import {average} from '../vendor/math';
 
 class TP6mAggregate extends Component {
   constructor(props) {
@@ -32,10 +33,47 @@ class TP6mAggregate extends Component {
         },
       ],
     });
+
+
+    const grouped = edges(
+      data,
+      [
+        "test",
+        "suite",
+        "platform",
+        {
+          value: 'datetime',
+          domain: {
+            type: 'time',
+            min: 'today-3month',
+            max: 'today',
+            interval: 'day',
+          },
+        }
+      ]
+    )
+
+    // CHECK EACH TEST/SUITE/DAY FOR MISSING VALUES
+    .window(3, (value, c, values)=>{
+      if (c>0 && value.length===0) return values[c-1];
+      return average(value)
+    })
+
+    .window(1, (value) =>{
+      value.map()
+
+
+    });
+
+
     // DAILY AGGREGATE
+
+
     // FOR EACH TEST
     // SET NORMALIZATION CONSTANTS
     // const minDate = Date.today().addMonths(-3);
+
+
 
     frum(data)
       .filter(jx({ gte: { datetime: { date: 'today-3month' } } }))
@@ -64,9 +102,9 @@ class TP6mAggregate extends Component {
 
     if (missing(data)) return null;
 
-    return frum(TP6_TESTS).map(({ id }) => (
+    return frum(TP6_TESTS).map(({ label }) => (
       <Chart
-        id={id}
+        id={label}
         type="line"
         data={data}
         height="200"
@@ -77,3 +115,5 @@ class TP6mAggregate extends Component {
 }
 
 export default withNavigation([])(withErrorBoundary(TP6mAggregate));
+
+

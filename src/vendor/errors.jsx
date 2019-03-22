@@ -2,6 +2,7 @@ import Raven from 'raven-js';
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import { missing } from './utils';
+import { Log, Exception } from './logs';
 import SETTINGS from './settings';
 
 if (process.env.NODE_ENV === 'production') {
