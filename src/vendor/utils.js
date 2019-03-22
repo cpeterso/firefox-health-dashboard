@@ -104,8 +104,9 @@ function literalField(fieldname) {
 expecting Array of Arrays, return transpose
  */
 function zip(args) {
-  const length = max(args.map(a => a.length));
-  return Array(length).map((_,i)=>args.map(a => a[i]));
+  const length = Math.max(...args.map(a => a.length));
+
+  return Array(length).map((_, i) => args.map(a => a[i]));
 }
 
 function splitField(fieldname) {
@@ -151,4 +152,5 @@ export {
   joinField,
   literalField,
   concatField,
+  zip,
 };

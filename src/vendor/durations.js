@@ -66,7 +66,8 @@ Duration.String2Duration = text => {
 
   if (Duration.MILLI_VALUES[interval] === undefined)
     Log.error(
-      `{{interval}} is not a recognized duration type (did you use the pural form by mistake?`, {interval}
+      `{{interval}} is not a recognized duration type (did you use the pural form by mistake?`,
+      { interval }
     );
 
   if (Duration.MONTH_VALUES[interval] === 0) {

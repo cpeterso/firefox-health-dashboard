@@ -191,7 +191,7 @@ const SUITES = {
 // ALL PAGE COMBINATIONS
 const TP6_PAGES = frum(SUITES.data)
   .map(row => Data.zip(SUITES.header, row))
-  .join('browser', PLATFORMS, 'browser');
+  .leftJoin('browser', PLATFORMS, 'browser');
 const TP6M_PAGES = TP6_PAGES.where({ browser: 'geckoview' });
 
 export { CONFIG, PLATFORMS, TP6_PAGES, TP6M_PAGES, TP6_TESTS };

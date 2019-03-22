@@ -2,17 +2,23 @@
 /* eslint-disable max-len */
 /* eslint-disable no-underscore-dangle */
 
-import { coalesce, exists, isNumeric, isString, last, isInteger } from './utils';
+import {
+  coalesce,
+  exists,
+  isNumeric,
+  isString,
+  last,
+  isInteger,
+} from './utils';
 import { Duration } from './durations';
 import { abs, ceiling, floor, round, sign } from './math';
 import { Log } from './logs';
 
 class Dates extends Date {
-  constructor(value){
-    super(value)
+  constructor(value) {
+    super(value);
   }
 }
-
 
 Dates.newInstance = value => {
   if (value === undefined || value === null) return null;
@@ -701,8 +707,6 @@ Dates.getBestInterval = (minDate, maxDate, requestedInterval, { min, max }) => {
   }
 };
 
-
-
 function _getInt(str, i, minlength, maxlength) {
   for (let x = maxlength; x >= minlength; x -= 1) {
     const token = str.substring(i, i + x);
@@ -1084,6 +1088,6 @@ Dates.range = ({ min, max, interval }) => {
   return output;
 };
 
-
 const Date = Dates;
-export {Date};
+
+export { Date };

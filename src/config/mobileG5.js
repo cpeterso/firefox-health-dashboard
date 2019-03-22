@@ -2,6 +2,11 @@
 
 // https://docs.google.com/spreadsheets/d/1xuYdCodmiFY-NmAXq_8WTcO_WMfsZVNNeiGCr-w2xAY/edit#gid=0
 
+import Data from "../vendor/Data";
+import { frum } from "../vendor/queryOps";
+
+const platform = 'android-hw-g5-7-0-arm7-api-16';
+
 const fennec64 =
   {
     "header": ["geomean", "loadtime", "loadtime stdev", "fcp", "fnbpaint", "ttfi", "ttfi stdev", "dcf", "suite", "url"],
@@ -36,4 +41,6 @@ const fennec64 =
     ]
   };
 
-export { fennec64 };
+const reference = frum(fennec64.data).map(row=> ({platform, ...Data.zip(fennec64.header, row)}));
+
+export { reference };

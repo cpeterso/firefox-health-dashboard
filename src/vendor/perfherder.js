@@ -5,7 +5,7 @@ import { missing, toArray, first } from './utils';
 import { frum, toPairs } from './queryOps';
 import { TREEHERDER } from './perf-goggles';
 import fetchJson from '../utils/fetchJson';
-import { jx } from './expressions';
+import { jx } from './jx/expressions';
 
 // WHAT ARE THE SIGNATURES OF THE loadtime?
 // GET ALL SIGNATURES FOR framework=10

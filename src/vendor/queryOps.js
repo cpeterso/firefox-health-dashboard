@@ -18,7 +18,7 @@ import {
 import { sum } from './math';
 import { Log } from './logs';
 import Data from './Data';
-import { jx } from './expressions';
+import { jx } from './jx/expressions';
 
 let internalFrum = null;
 let internalToPairs = null;
@@ -414,10 +414,6 @@ function frum(list) {
     return list;
   }
 
-  if (list instanceof Cube){
-    return new ArrayWrapper(list[Symbol.iterator]);
-  }
-
   return new ArrayWrapper(function* outputGen() {
     for (const v of list) yield [v];
   });
@@ -425,9 +421,11 @@ function frum(list) {
 
 internalFrum = frum;
 
+/*
+ * convert Object (or Data) into [value, key] pairs
+ * notice the **value is first**
+ */
 function toPairs(obj) {
-  // convert Object (or Data) into [value, key] pairs
-  // notice the **value is first**
   if (missing(obj)) return new ArrayWrapper(() => []);
 
   if (obj instanceof Map) {
@@ -446,9 +444,11 @@ ArrayWrapper.prototype.any = ArrayWrapper.prototype.some;
 
 internalToPairs = toPairs;
 
+/*
+ * Convert Object into list of [value, path] pairs
+ * where path is dot delimited path deep into object
+ */
 function leaves(obj) {
-  // Convert Object into list of [value, path] pairs
-  // where path is dot delimited path deep into object
   function* leafGen(map, prefix) {
     for (const [val, key] of toPairs(map).argsGen()) {
       const path = concatField(prefix, literalField(key));
@@ -491,7 +491,7 @@ extendWrapper({
   // Return Cartesian product of listA and listB,
   // where each element has properties; from one of each list: { ...a, ...b }
   // but only include elements where b[propB]==a[propA] (b ∈ listB, a ∈ listA)
-  join: function join(listA, propA, listB, propB) {
+  leftJoin: function leftJoin(listA, propA, listB, propB) {
     const lookup = internalFrum(listB)
       .groupBy(propB)
       .fromPairs();
