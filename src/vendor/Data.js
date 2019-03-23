@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 
 import { toPairs } from './queryOps';
+import { Log } from './logs';
 import {
   coalesce,
   exists,
@@ -11,7 +12,6 @@ import {
   missing,
   splitField,
 } from './utils';
-import { Log } from './logs';
 
 const Data = (key, value) => {
   if (key == null) {

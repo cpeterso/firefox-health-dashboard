@@ -1,5 +1,5 @@
-/* eslint-disable react/no-multi-comp */
 /* eslint-disable max-len */
+
 import { coalesce, exists, isString, missing } from './utils';
 import { expand } from './Template';
 import { frum } from './queryOps';
