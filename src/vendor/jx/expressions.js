@@ -1,11 +1,9 @@
 /* eslint-disable linebreak-style */
 /* eslint-disable no-use-before-define */
+/* eslint-disable no-underscore-dangle */
 
-import { zip, exists, first, isString, missing, toArray } from '../utils';
-import { frum } from '../queryOps';
+import { exists, first, isString, missing, toArray } from '../utils';
 import Data from '../Data';
-import Edge from './edges';
-import Matrix from './cubes';
 
 const jx = expr => {
   if (isString(expr)) return row => Data.get(row, expr);
@@ -61,30 +59,4 @@ const expressions = {
 
 expressions.in = expressions.eq;
 
-function edges(rows, [...edges]) {
-  const edges = edges.map(Edge.newInstance);
-  const size = edges.map(e => e.domain.partitions.length);
-  const output = Matrix.newInstance(size);
-
-  rows.forEach(row => {
-    const coord = edges.map(e => e.domain.valueToIndex(e.value(row)));
-
-    zip(coord, size, edges).forEach(([c, s, e], i) => {
-      if (e.domain.type === 'value') {
-        let currSize = s;
-
-        while (c > currSize) {
-          // last element of value domain is NULL, ensure it is still last
-          output.insertPart(i, s - 1);
-          currSize += 1;
-        }
-      }
-    });
-
-    output.add(coord, row);
-  });
-
-  return output;
-}
-
-export { jx, edges }; // eslint-disable-line import/prefer-default-export
+export { jx }; // eslint-disable-line import/prefer-default-export

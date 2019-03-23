@@ -1,6 +1,6 @@
 /* eslint-disable linebreak-style */
 
-import { Date } from '../../src/vendor/dates';
+import Date from '../../src/vendor/dates';
 
 describe('dates', () => {
   it('gmt', () => {

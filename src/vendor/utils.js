@@ -3,6 +3,11 @@
 import { ArrayWrapper } from './queryOps';
 
 const { isArray } = Array;
+const zero = () => 0;
+
+function array(length = 0) {
+  return new Array(length).fill(null);
+}
 
 function missing(value) {
   // return true if value is null, or undefined, or not a legit value
@@ -103,10 +108,10 @@ function literalField(fieldname) {
 /*
 expecting Array of Arrays, return transpose
  */
-function zip(args) {
+function zip(...args) {
   const length = Math.max(...args.map(a => a.length));
 
-  return Array(length).map((_, i) => args.map(a => a[i]));
+  return array(length).map((_, i) => args.map(a => a[i]));
 }
 
 function splitField(fieldname) {
@@ -153,4 +158,6 @@ export {
   literalField,
   concatField,
   zip,
+  array,
+  zero,
 };

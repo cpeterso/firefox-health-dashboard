@@ -4,6 +4,7 @@ import {
   isNumeric,
   literalField,
   splitField,
+  array,
 } from '../../src/vendor/utils';
 
 describe('utils', () => {
@@ -51,5 +52,22 @@ describe('utils', () => {
 
   it('splitField', () => {
     expect(splitField('a.b\\.c\\.html.d')).toEqual(['a', 'b.c.html', 'd']);
+  });
+
+  it('broken array: map()', () => {
+    expect(new Array(6).map(() => 1)[2]).toBeUndefined();
+  });
+
+  it('broken array: forEach()', () => {
+    let count = 0;
+
+    new Array(6).forEach(() => {
+      count += 1;
+    });
+    expect(count).toEqual(0);
+  });
+
+  it('fixed array', () => {
+    expect(array(6).map(() => 1)[2]).toEqual(1);
   });
 });

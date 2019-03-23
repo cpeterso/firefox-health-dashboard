@@ -71,7 +71,7 @@ function prettyJSON(json, maxDepth) {
   }
 
   try {
-    if (Array.isArray(json)) {
+    if (isArray(json)) {
       const output = frum(json)
         .map(v => {
           if (v === undefined) return;

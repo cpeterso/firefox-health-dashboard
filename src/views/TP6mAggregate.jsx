@@ -8,9 +8,11 @@ import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
 import generateOptions from '../utils/chartJs/generateOptions';
 import { withErrorBoundary } from '../vendor/errors';
-import { edges, jx } from '../vendor/jx/expressions';
+import { jx } from '../vendor/jx/expressions';
 import { average } from '../vendor/math';
 import { reference } from '../config/mobileG5';
+import { edges } from '../vendor/jx/cubes';
+import { Log } from '../vendor/logs';
 
 class TP6mAggregate extends Component {
   constructor(props) {
@@ -41,27 +43,28 @@ class TP6mAggregate extends Component {
         .flatten(),
       ['test', 'suite', 'platform']
     );
-
-    frum(data)
-      .edges({
-        name: 'measured',
-        edges: [
-          'test',
-          {
-            value: 'datetime',
-            domain: {
-              type: 'time',
-              min: 'today-3month',
-              max: 'today',
-              interval: 'day',
-            },
+    const temp = edges(data, {
+      name: 'measured',
+      edges: [
+        'test',
+        {
+          value: 'datetime',
+          domain: {
+            type: 'time',
+            min: 'today-3month',
+            max: 'today',
+            interval: 'day',
           },
-          'suite',
-          'platform',
-        ],
-      })
+        },
+        'suite',
+        'platform',
+      ],
+    });
 
-      // CHECK EACH TEST/SUITE/DAY FOR MISSING VALUES
+    Log.note(temp.name);
+
+    // CHECK EACH TEST/SUITE/DAY FOR MISSING VALUES
+    temp
       .window({
         name: 'daily',
         edges: ['test', 'suite', 'platform'],
@@ -71,7 +74,11 @@ class TP6mAggregate extends Component {
           return average(value);
         },
       })
-      .leftJoin(['test', 'suite', 'platform'], g5Reference, 'reference')
+      .leftJoin({
+        name: 'reference',
+        edges: ['test', 'suite', 'platform'],
+        value: g5Reference,
+      })
       .window({
         name: 'result',
         edges: ['test', 'datetime'],
@@ -116,7 +123,7 @@ class TP6mAggregate extends Component {
 
     return frum(TP6_TESTS).map(({ label }) => (
       <Chart
-        id={label}
+        key={label}
         type="line"
         data={data}
         height="200"

@@ -4,15 +4,238 @@
 
 import { coalesce, exists, isNumeric, isString, missing } from './utils';
 import { abs, floor, min, round } from './math';
-import { Date } from './dates';
+import Date from './dates';
 import { Log } from './logs';
+import strings from './strings';
 
-const Duration = () => {
-  this.milli = 0; // INCLUDES THE MONTH VALUE AS MILLISECONDS
-  this.month = 0;
+class Duration {
+  constructor() {
+    this.milli = 0; // INCLUDES THE MONTH VALUE AS MILLISECONDS
+    this.month = 0;
+  }
 
-  return this;
-};
+  add = duration => {
+    const output = new Duration();
+
+    output.milli = this.milli + duration.milli;
+    output.month = this.month + duration.month;
+
+    return output;
+  };
+
+  addDay = numDay => this.add(Duration.DAY.multiply(numDay));
+
+  lt = val => this.milli < val.milli;
+
+  lte = val => this.milli <= val.milli;
+
+  seconds = () => this.milli / 1000.0;
+
+  multiply = amount => {
+    const output = new Duration();
+
+    output.milli = this.milli * amount;
+    output.month = this.month * amount;
+
+    return output;
+  };
+
+  divideBy = amount => {
+    if (amount.month !== undefined && amount.month !== 0) {
+      let m = this.month;
+      let r = this.milli;
+      // DO NOT CONSIDER TIME OF DAY
+      const tod = r % Duration.MILLI_VALUES.day;
+
+      r -= tod;
+
+      if (m === 0 && r > Duration.MILLI_VALUES.year / 3) {
+        m = floor((12 * this.milli) / Duration.MILLI_VALUES.year);
+        r -= (m / 12) * Duration.MILLI_VALUES.year;
+      } else {
+        r -= this.month * Duration.MILLI_VALUES.month;
+
+        if (r >= Duration.MILLI_VALUES.day * 31)
+          Log.error('Do not know how to handle');
+      }
+
+      r = min(29 / 30, (r + tod) / (Duration.MILLI_VALUES.day * 30));
+
+      const output = floor(m / amount.month) + r;
+
+      return output;
+    }
+
+    if (amount.milli === undefined) {
+      const output = new Duration();
+
+      output.milli = this.milli / amount;
+      output.month = this.month / amount;
+
+      return output;
+    }
+
+    return this.milli / amount.milli;
+  };
+
+  subtract = duration => {
+    const output = new Duration();
+
+    output.milli = this.milli - duration.milli;
+    output.month = this.month - duration.month;
+
+    return output;
+  };
+
+  floor = interval => {
+    if (interval === undefined || interval.milli === undefined)
+      Log.error('Expecting an interval as a Duration object');
+    const output = new Duration();
+
+    if (interval.month !== 0) {
+      if (this.month !== 0) {
+        output.month = floor(this.month / interval.month) * interval.month;
+        //      let rest=(this.milli - (Duration.MILLI_VALUES.month * output.month));
+        //      if (rest>Duration.MILLI_VALUES.day*31){  //WE HOPE THIS BIGGER VALUE WILL STILL CATCH POSSIBLE LOGIC PROBLEMS
+        //        Log.error("This duration has more than a month's worth of millis, can not handle this rounding");
+        //      }//endif
+        //      while (rest<0){
+        //        output.month-=interval.month;
+        //        rest=(this.milli - (Duration.MILLI_VALUES.month * output.month));
+        //      }//while
+        // //      if (rest>Duration.MILLI_VALUES.month){ //WHEN FLOORING xmonth-1day, THE rest CAN BE 4week+1day, OR MORE.
+        output.milli = output.month * Duration.MILLI_VALUES.month;
+
+        return output;
+      }
+
+      // A MONTH OF DURATION IS BIGGER THAN A CANONICAL MONTH
+      output.month =
+        floor((this.milli * 12) / Duration.MILLI_VALUES.year / interval.month) *
+        interval.month;
+      output.milli = output.month * Duration.MILLI_VALUES.month;
+    } else {
+      output.milli = floor(this.milli / interval.milli) * interval.milli;
+    }
+
+    return output;
+  };
+
+  mod = interval => this.subtract(this.floor(interval));
+
+  toString = r => {
+    if (this.milli === 0) return 'zero';
+
+    let round = coalesce(r, 'milli');
+    let rem;
+    let output = '';
+    let rest = this.milli - Duration.MILLI_VALUES.month * this.month; // DO NOT INCLUDE THE MONTH'S MILLIS
+    const isNegative = rest < 0;
+
+    rest = abs(rest);
+
+    if (round === 'milli') {
+      rem = rest % 1000;
+
+      if (rem !== 0) output = `+${rem}milli${output}`;
+      rest = floor(rest / 1000);
+      round = 'second';
+    } else {
+      rest /= 1000;
+    }
+
+    if (round === 'second') {
+      rem = round(rest) % 60;
+
+      if (rem !== 0) output = `+${rem}second${output}`;
+      rest = floor(rest / 60);
+      round = 'minute';
+    } else {
+      rest /= 60;
+    }
+
+    if (round === 'minute') {
+      rem = round(rest) % 60;
+
+      if (rem !== 0) output = `+${rem}minute${output}`;
+      rest = floor(rest / 60);
+      round = 'hour';
+    } else {
+      rest /= 60;
+    }
+
+    // HOUR
+    if (round === 'hour') {
+      rem = round(rest) % 24;
+
+      if (rem !== 0) output = `+${rem}hour${output}`;
+      rest = floor(rest / 24);
+      round = 'day';
+    } else {
+      rest /= 24;
+    }
+
+    // DAY
+    if (round === 'day') {
+      if (rest < 11 && rest !== 7) {
+        rem = rest;
+        rest = 0;
+      } else {
+        rem = rest % 7;
+        rest = floor(rest / 7);
+        round = 'week';
+      }
+
+      if (rem !== 0) output = `+${rem}day${output}`;
+    } else {
+      rest /= 7;
+    }
+
+    // WEEK
+    if (round === 'week') {
+      rest = round(rest);
+
+      if (rest !== 0) output = `+${rest}week${output}`;
+    }
+
+    if (isNegative) output = output.replace('+', '-');
+
+    // MONTH AND YEAR
+    if (this.month !== 0) {
+      const sign = this.month < 0 ? '-' : '+';
+      const month = abs(this.month);
+
+      if (month <= 18 && month !== 12) {
+        output = `${sign + month}month${output}`;
+      } else {
+        const m = month % 12;
+
+        if (m !== 0) output = `${sign + m}month${output}`;
+        const y = floor(month / 12);
+
+        output = `${sign + y}year${output}`;
+      }
+    }
+
+    if (output.charAt(0) === '+') output = strings.rightBut(output, 1);
+
+    if (output.charAt(0) === '1' && !isNumeric(output.charAt(1)))
+      output = strings.rightBut(output, 1);
+
+    return output;
+  };
+
+  format = _format => new Date(this.milli).format(_format);
+
+  round = (interval, rounding) => {
+    const rounding_ = coalesce(rounding, 0);
+    let output = this.divideBy(interval);
+
+    output = round(output, rounding_);
+
+    return output;
+  };
+}
 
 Duration.DOMAIN = {
   type: 'duration',
@@ -61,8 +284,8 @@ Duration.String2Duration = text => {
     s += 1;
 
   const output = new Duration();
-  const interval = text.rightBut(s);
-  const amount = s === 0 ? 1 : JSON.parse(text.left(s));
+  const interval = strings.rightBut(text, s);
+  const amount = s === 0 ? 1 : JSON.parse(strings.left(text, s));
 
   if (Duration.MILLI_VALUES[interval] === undefined)
     Log.error(
@@ -154,121 +377,12 @@ Duration.newInstance = obj => {
   return output;
 };
 
-Duration.prototype.add = duration => {
-  const output = new Duration();
-
-  output.milli = this.milli + duration.milli;
-  output.month = this.month + duration.month;
-
-  return output;
-};
-
-Duration.prototype.addDay = numDay => this.add(Duration.DAY.multiply(numDay));
-
-Duration.prototype.lt = val => this.milli < val.milli;
-
-Duration.prototype.lte = val => this.milli <= val.milli;
-
-Duration.prototype.seconds = () => this.milli / 1000.0;
-
-Duration.prototype.multiply = amount => {
-  const output = new Duration();
-
-  output.milli = this.milli * amount;
-  output.month = this.month * amount;
-
-  return output;
-};
-
-Duration.prototype.divideBy = amount => {
-  if (amount.month !== undefined && amount.month !== 0) {
-    let m = this.month;
-    let r = this.milli;
-    // DO NOT CONSIDER TIME OF DAY
-    const tod = r % Duration.MILLI_VALUES.day;
-
-    r -= tod;
-
-    if (m === 0 && r > Duration.MILLI_VALUES.year / 3) {
-      m = floor((12 * this.milli) / Duration.MILLI_VALUES.year);
-      r -= (m / 12) * Duration.MILLI_VALUES.year;
-    } else {
-      r -= this.month * Duration.MILLI_VALUES.month;
-
-      if (r >= Duration.MILLI_VALUES.day * 31)
-        Log.error('Do not know how to handle');
-    }
-
-    r = min(29 / 30, (r + tod) / (Duration.MILLI_VALUES.day * 30));
-
-    const output = floor(m / amount.month) + r;
-
-    return output;
-  }
-
-  if (amount.milli === undefined) {
-    const output = new Duration();
-
-    output.milli = this.milli / amount;
-    output.month = this.month / amount;
-
-    return output;
-  }
-
-  return this.milli / amount.milli;
-};
-
-Duration.prototype.subtract = duration => {
-  const output = new Duration();
-
-  output.milli = this.milli - duration.milli;
-  output.month = this.month - duration.month;
-
-  return output;
-};
-
-Duration.prototype.floor = interval => {
-  if (interval === undefined || interval.milli === undefined)
-    Log.error('Expecting an interval as a Duration object');
-  const output = new Duration();
-
-  if (interval.month !== 0) {
-    if (this.month !== 0) {
-      output.month = floor(this.month / interval.month) * interval.month;
-      //      let rest=(this.milli - (Duration.MILLI_VALUES.month * output.month));
-      //      if (rest>Duration.MILLI_VALUES.day*31){  //WE HOPE THIS BIGGER VALUE WILL STILL CATCH POSSIBLE LOGIC PROBLEMS
-      //        Log.error("This duration has more than a month's worth of millis, can not handle this rounding");
-      //      }//endif
-      //      while (rest<0){
-      //        output.month-=interval.month;
-      //        rest=(this.milli - (Duration.MILLI_VALUES.month * output.month));
-      //      }//while
-      // //      if (rest>Duration.MILLI_VALUES.month){ //WHEN FLOORING xmonth-1day, THE rest CAN BE 4week+1day, OR MORE.
-      output.milli = output.month * Duration.MILLI_VALUES.month;
-
-      return output;
-    }
-
-    // A MONTH OF DURATION IS BIGGER THAN A CANONICAL MONTH
-    output.month =
-      floor((this.milli * 12) / Duration.MILLI_VALUES.year / interval.month) *
-      interval.month;
-    output.milli = output.month * Duration.MILLI_VALUES.month;
-  } else {
-    output.milli = floor(this.milli / interval.milli) * interval.milli;
-  }
-
-  return output;
-};
-
-Duration.prototype.mod = interval => this.subtract(this.floor(interval));
-
 const milliSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500]
-  .push(...[1, 2, 5, 6, 10, 15, 30].map(v => v * 1000)) // SECONDS
-  .push(...[1, 2, 5, 6, 10, 15, 30].map(v => v * 60 * 1000)) // MINUTES
-  .push(...[1, 2, 3, 6, 12].map(v => v * 60 * 60 * 1000)) // HOURS
-  .push(...[1].map(v => v * 24 * 60 * 60 * 1000)) // DAYS
-  .push(...[1, 2].map(v => v * 7 * 24 * 60 * 60 * 1000)); // WEEKS
+  .concat(...[1, 2, 5, 6, 10, 15, 30].map(v => v * 1000)) // SECONDS
+  .concat(...[1, 2, 5, 6, 10, 15, 30].map(v => v * 60 * 1000)) // MINUTES
+  .concat(...[1, 2, 3, 6, 12].map(v => v * 60 * 60 * 1000)) // HOURS
+  .concat(...[1].map(v => v * 24 * 60 * 60 * 1000)) // DAYS
+  .concat(...[1, 2].map(v => v * 7 * 24 * 60 * 60 * 1000)); // WEEKS
 const monthSteps = [1, 2, 6, 12, 24, 60, 120];
 
 /**
@@ -393,119 +507,6 @@ Duration.niceFormat = (min, max, desiredSteps, desiredInterval) => {
     ['', '', '', '', 'days', 'days'],
     ['', '', '', '', '', 'days'],
   ][minFormat][maxFormat];
-};
-
-Duration.prototype.toString = r => {
-  if (this.milli === 0) return 'zero';
-
-  let round = coalesce(r, 'milli');
-  let rem;
-  let output = '';
-  let rest = this.milli - Duration.MILLI_VALUES.month * this.month; // DO NOT INCLUDE THE MONTH'S MILLIS
-  const isNegative = rest < 0;
-
-  rest = abs(rest);
-
-  if (round === 'milli') {
-    rem = rest % 1000;
-
-    if (rem !== 0) output = `+${rem}milli${output}`;
-    rest = floor(rest / 1000);
-    round = 'second';
-  } else {
-    rest /= 1000;
-  }
-
-  if (round === 'second') {
-    rem = round(rest) % 60;
-
-    if (rem !== 0) output = `+${rem}second${output}`;
-    rest = floor(rest / 60);
-    round = 'minute';
-  } else {
-    rest /= 60;
-  }
-
-  if (round === 'minute') {
-    rem = round(rest) % 60;
-
-    if (rem !== 0) output = `+${rem}minute${output}`;
-    rest = floor(rest / 60);
-    round = 'hour';
-  } else {
-    rest /= 60;
-  }
-
-  // HOUR
-  if (round === 'hour') {
-    rem = round(rest) % 24;
-
-    if (rem !== 0) output = `+${rem}hour${output}`;
-    rest = floor(rest / 24);
-    round = 'day';
-  } else {
-    rest /= 24;
-  }
-
-  // DAY
-  if (round === 'day') {
-    if (rest < 11 && rest !== 7) {
-      rem = rest;
-      rest = 0;
-    } else {
-      rem = rest % 7;
-      rest = floor(rest / 7);
-      round = 'week';
-    }
-
-    if (rem !== 0) output = `+${rem}day${output}`;
-  } else {
-    rest /= 7;
-  }
-
-  // WEEK
-  if (round === 'week') {
-    rest = round(rest);
-
-    if (rest !== 0) output = `+${rest}week${output}`;
-  }
-
-  if (isNegative) output = output.replace('+', '-');
-
-  // MONTH AND YEAR
-  if (this.month !== 0) {
-    const sign = this.month < 0 ? '-' : '+';
-    const month = abs(this.month);
-
-    if (month <= 18 && month !== 12) {
-      output = `${sign + month}month${output}`;
-    } else {
-      const m = month % 12;
-
-      if (m !== 0) output = `${sign + m}month${output}`;
-      const y = floor(month / 12);
-
-      output = `${sign + y}year${output}`;
-    }
-  }
-
-  if (output.charAt(0) === '+') output = output.rightBut(1);
-
-  if (output.charAt(0) === '1' && !isNumeric(output.charAt(1)))
-    output = output.rightBut(1);
-
-  return output;
-};
-
-Duration.prototype.format = _format => new Date(this.milli).format(_format);
-
-Duration.prototype.round = (interval, rounding) => {
-  const rounding_ = coalesce(rounding, 0);
-  let output = this.divideBy(interval);
-
-  output = round(output, rounding_);
-
-  return output;
 };
 
 Duration.ZERO = Duration.newInstance(0);

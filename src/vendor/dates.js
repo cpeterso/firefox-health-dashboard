@@ -15,9 +15,240 @@ import { abs, ceiling, floor, round, sign } from './math';
 import { Log } from './logs';
 
 class Dates extends Date {
-  constructor(value) {
-    super(value);
-  }
+  getMilli = Dates.prototype.getTime;
+
+  milli = Dates.prototype.getTime;
+
+  unix = () =>
+    // RETURN NUMBER OF SECONDS SINCE EPOCH
+    this.milli() / 1000.0; // function
+
+  between = (min, max) => {
+    if (exists(min)) {
+      if (min.getMilli && this.getMilli() < min.getMilli()) return false;
+
+      if (this.getMilli() < min) return false;
+    }
+
+    if (exists(max)) {
+      if (max.getMilli && max.getMilli() < this.getMilli()) return false;
+
+      if (max <= this.getMilli()) return false;
+    }
+
+    return true;
+  };
+
+  add = interval => {
+    if (interval === undefined || interval === null) {
+      Log.error('expecting an interval to add');
+    }
+
+    const i = Duration.newInstance(interval);
+    const addMilli = i.milli - Duration.MILLI_VALUES.month * i.month;
+
+    return this.addMonth(i.month).addMilli(addMilli);
+  };
+
+  subtract = (time, interval) => {
+    if (typeof time === 'string')
+      Log.error(
+        'expecting to subtract a Duration or Dates object, not a string'
+      );
+
+    if (interval === undefined || interval.month === 0) {
+      if (time.getMilli) {
+        // SUBTRACT TIME
+        return Duration.newInstance(this.getMilli() - time.getMilli());
+      }
+
+      // SUBTRACT DURATION
+      const residue = time.milli - Duration.MILLI_VALUES.month * time.month;
+
+      return this.addMonth(-time.month).addMilli(-residue);
+    }
+
+    if (time.getMilli) {
+      // SUBTRACT TIME
+      return Dates.diffMonth(this, time);
+    }
+
+    // SUBTRACT DURATION
+    return this.addMilli(-time.milli);
+  };
+
+  dow = Dates.prototype.getUTCDay;
+
+  // CONVERT THIS GMT DATE TO LOCAL DATE
+  addTimezone = () => this.addMinute(-this.getTimezoneOffset());
+
+  // CONVERT THIS LOCAL DATE TO GMT DATE
+  subtractTimezone = () => this.addMinute(this.getTimezoneOffset());
+
+  addMilli = value => new Dates(this.getMilli() + value);
+
+  addSecond = value => {
+    const output = new Dates(this);
+
+    output.setUTCSeconds(this.getUTCSeconds() + value);
+
+    return output;
+  };
+
+  addMinute = value => {
+    const output = new Dates(this);
+
+    output.setUTCMinutes(this.getUTCMinutes() + value);
+
+    return output;
+  };
+
+  addHour = value => {
+    const output = new Dates(this);
+
+    output.setUTCHours(this.getUTCHours() + value);
+
+    return output;
+  };
+
+  addDay = value => {
+    const value_ = coalesce(value, 1);
+    const output = new Dates(this);
+
+    output.setUTCDate(this.getUTCDate() + value_);
+
+    return output;
+  };
+
+  addWeekday = value => {
+    let output = this.addDay(1);
+
+    if ([0, 1].includes(output.dow())) output = output.floorWeek().addDay(2);
+
+    const weeks = floor(value / 5);
+
+    output = output.addDay(value - weeks * 5);
+
+    if ([0, 1].includes(output.dow())) output = output.floorWeek().addDay(2);
+
+    output = output.addWeek(weeks).addDay(-1);
+
+    return output;
+  };
+
+  addWeek = value => {
+    const value_ = coalesce(value, 1);
+    const output = new Dates(this);
+
+    output.setUTCDate(this.getUTCDate() + value_ * 7);
+
+    return output;
+  };
+
+  addMonth = value => {
+    if (value === 0) return this; // WHOA! SETTING MONTH IS CRAZY EXPENSIVE!!
+    const output = new Dates(this);
+
+    output.setUTCMonth(this.getUTCMonth() + value);
+
+    return output;
+  };
+
+  addYear = value => {
+    const output = new Dates(this);
+
+    output.setUTCFullYear(this.getUTCFullYear() + value);
+
+    return output;
+  };
+
+  // RETURN A DATE ROUNDED DOWN TO THE CLOSEST FULL INTERVAL
+  floor = (interval, minDate) => {
+    if (exists(minDate))
+      return minDate.add(this.subtract(minDate).floor(interval));
+
+    if (exists(interval.month) && interval.month > 0) {
+      if (interval.month % 12 === 0) {
+        return this.addMonth(-interval.month + 12).floorYear();
+      }
+
+      if ([1, 2, 3, 4, 6].includes(interval.month)) {
+        const temp = this.floorYear();
+
+        return temp.add(this.subtract(temp).floor(interval));
+      }
+
+      Log.error(`Can not floor interval '${interval.toString()}'`);
+    }
+
+    let intervalStr = interval;
+
+    if (interval.milli !== undefined) {
+      intervalStr = interval.toString();
+    }
+
+    if (intervalStr.indexOf('year') >= 0) return this.floorYear();
+
+    if (intervalStr.indexOf('month') >= 0) return this.floorMonth();
+
+    if (intervalStr.indexOf('week') >= 0) return this.floorWeek();
+
+    if (intervalStr.indexOf('day') >= 0) return this.floorDay();
+
+    if (intervalStr.indexOf('hour') >= 0) return this.floorHour();
+    Log.error(`Can not floor interval '${intervalStr}'`);
+  };
+
+  floorYear = () => {
+    const output = new Dates(this);
+
+    output.setUTCMonth(0, 1);
+    output.setUTCHours(0, 0, 0, 0);
+
+    return output;
+  };
+
+  floorMonth = () => {
+    const output = new Dates(this);
+
+    output.setUTCDate(1);
+    output.setUTCHours(0, 0, 0, 0);
+
+    return output;
+  };
+
+  floorWeek = () => {
+    const output = new Dates(this);
+
+    output.setUTCDate(this.getUTCDate() - this.getUTCDay());
+    output.setUTCHours(0, 0, 0, 0);
+
+    return output;
+  };
+
+  floorDay = () => {
+    const output = new Dates(this);
+
+    output.setUTCHours(0, 0, 0, 0);
+
+    return output;
+  };
+
+  floorHour = () => {
+    const output = new Dates(this);
+
+    output.setUTCMinutes(0);
+
+    return output;
+  };
+
+  ceilingDay = () => this.floorDay().addDay(1);
+
+  ceilingWeek = () => this.floorWeek().addWeek(1);
+
+  ceilingMonth = () => this.floorMonth().addMonth(1);
+
+  ceiling = interval => this.floor(interval).add(interval);
 }
 
 Dates.newInstance = value => {
@@ -73,64 +304,6 @@ Dates.max = (...args) => {
   });
 
   return max;
-};
-
-Dates.prototype.getMilli = Dates.prototype.getTime;
-Dates.prototype.milli = Dates.prototype.getTime;
-Dates.prototype.unix = () =>
-  // RETURN NUMBER OF SECONDS SINCE EPOCH
-  this.milli() / 1000.0; // function
-
-Dates.prototype.between = (min, max) => {
-  if (exists(min)) {
-    if (min.getMilli && this.getMilli() < min.getMilli()) return false;
-
-    if (this.getMilli() < min) return false;
-  }
-
-  if (exists(max)) {
-    if (max.getMilli && max.getMilli() < this.getMilli()) return false;
-
-    if (max <= this.getMilli()) return false;
-  }
-
-  return true;
-};
-
-Dates.prototype.add = interval => {
-  if (interval === undefined || interval === null) {
-    Log.error('expecting an interval to add');
-  }
-
-  const i = Duration.newInstance(interval);
-  const addMilli = i.milli - Duration.MILLI_VALUES.month * i.month;
-
-  return this.addMonth(i.month).addMilli(addMilli);
-};
-
-Dates.prototype.subtract = (time, interval) => {
-  if (typeof time === 'string')
-    Log.error('expecting to subtract a Duration or Dates object, not a string');
-
-  if (interval === undefined || interval.month === 0) {
-    if (time.getMilli) {
-      // SUBTRACT TIME
-      return Duration.newInstance(this.getMilli() - time.getMilli());
-    }
-
-    // SUBTRACT DURATION
-    const residue = time.milli - Duration.MILLI_VALUES.month * time.month;
-
-    return this.addMonth(-time.month).addMilli(-residue);
-  }
-
-  if (time.getMilli) {
-    // SUBTRACT TIME
-    return Dates.diffMonth(this, time);
-  }
-
-  // SUBTRACT DURATION
-  return this.addMilli(-time.milli);
 };
 
 // RETURN THE NUMBER OF WEEKDAYS BETWWEN GIVEN TIMES
@@ -230,180 +403,6 @@ Dates.diffMonth = (endTime, startTime) => {
   //    Log.error("problem");
   return output;
 };
-
-Dates.prototype.dow = Dates.prototype.getUTCDay;
-
-// CONVERT THIS GMT DATE TO LOCAL DATE
-Dates.prototype.addTimezone = () => this.addMinute(-this.getTimezoneOffset());
-
-// CONVERT THIS LOCAL DATE TO GMT DATE
-Dates.prototype.subtractTimezone = () =>
-  this.addMinute(this.getTimezoneOffset());
-
-Dates.prototype.addMilli = value => new Dates(this.getMilli() + value);
-
-Dates.prototype.addSecond = value => {
-  const output = new Dates(this);
-
-  output.setUTCSeconds(this.getUTCSeconds() + value);
-
-  return output;
-};
-
-Dates.prototype.addMinute = value => {
-  const output = new Dates(this);
-
-  output.setUTCMinutes(this.getUTCMinutes() + value);
-
-  return output;
-};
-
-Dates.prototype.addHour = value => {
-  const output = new Dates(this);
-
-  output.setUTCHours(this.getUTCHours() + value);
-
-  return output;
-};
-
-Dates.prototype.addDay = value => {
-  const value_ = coalesce(value, 1);
-  const output = new Dates(this);
-
-  output.setUTCDate(this.getUTCDate() + value_);
-
-  return output;
-};
-
-Dates.prototype.addWeekday = value => {
-  let output = this.addDay(1);
-
-  if ([0, 1].includes(output.dow())) output = output.floorWeek().addDay(2);
-
-  const weeks = floor(value / 5);
-
-  output = output.addDay(value - weeks * 5);
-
-  if ([0, 1].includes(output.dow())) output = output.floorWeek().addDay(2);
-
-  output = output.addWeek(weeks).addDay(-1);
-
-  return output;
-};
-
-Dates.prototype.addWeek = value => {
-  const value_ = coalesce(value, 1);
-  const output = new Dates(this);
-
-  output.setUTCDate(this.getUTCDate() + value_ * 7);
-
-  return output;
-};
-
-Dates.prototype.addMonth = value => {
-  if (value === 0) return this; // WHOA! SETTING MONTH IS CRAZY EXPENSIVE!!
-  const output = new Dates(this);
-
-  output.setUTCMonth(this.getUTCMonth() + value);
-
-  return output;
-};
-
-Dates.prototype.addYear = value => {
-  const output = new Dates(this);
-
-  output.setUTCFullYear(this.getUTCFullYear() + value);
-
-  return output;
-};
-
-// RETURN A DATE ROUNDED DOWN TO THE CLOSEST FULL INTERVAL
-Dates.prototype.floor = (interval, minDate) => {
-  if (exists(minDate))
-    return minDate.add(this.subtract(minDate).floor(interval));
-
-  if (exists(interval.month) && interval.month > 0) {
-    if (interval.month % 12 === 0) {
-      return this.addMonth(-interval.month + 12).floorYear();
-    }
-
-    if ([1, 2, 3, 4, 6].includes(interval.month)) {
-      const temp = this.floorYear();
-
-      return temp.add(this.subtract(temp).floor(interval));
-    }
-
-    Log.error(`Can not floor interval '${interval.toString()}'`);
-  }
-
-  let intervalStr = interval;
-
-  if (interval.milli !== undefined) {
-    intervalStr = interval.toString();
-  }
-
-  if (intervalStr.indexOf('year') >= 0) return this.floorYear();
-
-  if (intervalStr.indexOf('month') >= 0) return this.floorMonth();
-
-  if (intervalStr.indexOf('week') >= 0) return this.floorWeek();
-
-  if (intervalStr.indexOf('day') >= 0) return this.floorDay();
-
-  if (intervalStr.indexOf('hour') >= 0) return this.floorHour();
-  Log.error(`Can not floor interval '${intervalStr}'`);
-};
-
-Dates.prototype.floorYear = () => {
-  const output = new Dates(this);
-
-  output.setUTCMonth(0, 1);
-  output.setUTCHours(0, 0, 0, 0);
-
-  return output;
-};
-
-Dates.prototype.floorMonth = () => {
-  const output = new Dates(this);
-
-  output.setUTCDate(1);
-  output.setUTCHours(0, 0, 0, 0);
-
-  return output;
-};
-
-Dates.prototype.floorWeek = () => {
-  const output = new Dates(this);
-
-  output.setUTCDate(this.getUTCDate() - this.getUTCDay());
-  output.setUTCHours(0, 0, 0, 0);
-
-  return output;
-};
-
-Dates.prototype.floorDay = () => {
-  const output = new Dates(this);
-
-  output.setUTCHours(0, 0, 0, 0);
-
-  return output;
-};
-
-Dates.prototype.floorHour = () => {
-  const output = new Dates(this);
-
-  output.setUTCMinutes(0);
-
-  return output;
-};
-
-Dates.prototype.ceilingDay = () => this.floorDay().addDay(1);
-
-Dates.prototype.ceilingWeek = () => this.floorWeek().addWeek(1);
-
-Dates.prototype.ceilingMonth = () => this.floorMonth().addMonth(1);
-
-Dates.prototype.ceiling = interval => this.floor(interval).add(interval);
 
 // ------------------------------------------------------------------
 // These functions use the same 'format' strings as the
@@ -1043,9 +1042,9 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
   ];
 
   Dates.CheckList = []
-    .push(...generalFormats)
-    .push(...dateFirst)
-    .push(...monthFirst);
+    .concat(generalFormats)
+    .concat(dateFirst)
+    .concat(monthFirst);
 }
 
 Dates.tryParse = (val_, isFutureDate) => {
@@ -1088,6 +1087,4 @@ Dates.range = ({ min, max, interval }) => {
   return output;
 };
 
-const Date = Dates;
-
-export { Date };
+export default Dates;

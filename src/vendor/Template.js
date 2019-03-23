@@ -1,4 +1,4 @@
-import { coalesce, isObject, isString, missing } from './utils';
+import { array, coalesce, isArray, isObject, isString, missing } from './utils';
 import { toPairs } from './queryOps';
 import { Log } from './logs';
 import Data from './Data';
@@ -27,7 +27,7 @@ function expandLoop(loop, namespaces) {
       }
 
       namespaces.forEach((n, i) => {
-        ns[Array(i + 3).join('.')] = n;
+        ns[array(i + 3).join('.')] = n;
       });
 
       const nns = namespaces.slice();
@@ -110,7 +110,7 @@ expandAny = (template, namespaces) => {
     return '';
   }
 
-  if (Array.isArray(template)) {
+  if (isArray(template)) {
     return expandArray(template, namespaces);
   }
 

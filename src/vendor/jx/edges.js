@@ -1,3 +1,6 @@
+/* eslint-disable linebreak-style */
+/* eslint-disable no-underscore-dangle */
+
 import { jx } from './expressions';
 import { isString } from '../utils';
 import { Domain, ValueDomain } from './domains';
@@ -12,16 +15,20 @@ class Edge {
 
 Edge.newInstance = desc => {
   if (isString(desc)) {
-    return Edge({ name: desc, value: jx(desc), domain: new ValueDomain(desc) });
+    return new Edge({
+      name: desc,
+      value: jx(desc),
+      domain: new ValueDomain(desc),
+    });
   }
 
   const { name, value, domain } = desc;
 
-  return Edge({
+  return new Edge({
     name,
     value: jx(value),
     domain: Domain.newInstance(domain),
   });
 };
 
-export Edge;
+export default Edge;
