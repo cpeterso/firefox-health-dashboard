@@ -1,8 +1,8 @@
 /* global fetch */
 import percentile from 'aggregatejs/percentile';
+import { Log } from '../../vendor/logs';
 import { frum, toPairs } from '../../vendor/queryOps';
 import { toQueryString } from '../../vendor/convert';
-import { Log } from '../../vendor/logs';
 
 const TREEHERDER = 'https://treeherder.mozilla.org';
 const PROJECT = 'mozilla-central';

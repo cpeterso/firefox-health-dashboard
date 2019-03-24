@@ -14,6 +14,8 @@ class Edge {
 }
 
 Edge.newInstance = desc => {
+  if (desc instanceof  Edge) return desc;
+
   if (isString(desc)) {
     return new Edge({
       name: desc,

@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 
 import { coalesce, exists, isString, missing } from './utils';
-import { expand } from './Template';
+import Template from './Template';
 import { frum } from './queryOps';
 
 //   Error
@@ -83,7 +83,7 @@ class Exception extends Error {
     const output = [];
 
     if (exists(this.template)) {
-      output.push(expand(this.template, this.props));
+      output.push(Template.expand(this.template, this.props));
     }
 
     if (this.trace) {
@@ -101,7 +101,7 @@ class Exception extends Error {
             output.push(')');
           }
 
-          return expand(output.join(''), s);
+          return Template.expand(output.join(''), s);
         })
       );
     }
@@ -120,7 +120,7 @@ class Exception extends Error {
 
     if (cause) return cause.message;
 
-    if (template) return expand(template, props);
+    if (template) return Template.expand(template, props);
 
     return 'unknown error';
   }
@@ -152,8 +152,9 @@ Exception.wrap = err => {
 
 class Log {}
 
-Log.error = (template, params, cause) => {
-  throw new Exception(template, params, cause, 1);
+Log.note = (template, params) => {
+  // eslint-disable-next-line no-console
+  console.log(Template.expand(template, params));
 };
 
 Log.warning = (template, params, cause) => {
@@ -167,6 +168,10 @@ Log.warning = (template, params, cause) => {
 
   // eslint-disable-next-line no-console
   console.log(e.toString());
+};
+
+Log.error = (template, params, cause) => {
+  throw new Exception(template, params, cause, 1);
 };
 
 export { Exception, Log };

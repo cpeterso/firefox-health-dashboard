@@ -15,9 +15,6 @@ import { abs, ceiling, floor, round, sign } from './math';
 import { Log } from './logs';
 
 class Dates extends Date {
-  getMilli = Dates.prototype.getTime;
-
-  milli = Dates.prototype.getTime;
 
   unix = () =>
     // RETURN NUMBER OF SECONDS SINCE EPOCH
@@ -25,15 +22,15 @@ class Dates extends Date {
 
   between = (min, max) => {
     if (exists(min)) {
-      if (min.getMilli && this.getMilli() < min.getMilli()) return false;
+      if (min.getMilli && this.milli() < min.milli()) return false;
 
-      if (this.getMilli() < min) return false;
+      if (this.milli() < min) return false;
     }
 
     if (exists(max)) {
-      if (max.getMilli && max.getMilli() < this.getMilli()) return false;
+      if (max.getMilli && max.milli() < this.milli()) return false;
 
-      if (max <= this.getMilli()) return false;
+      if (max <= this.milli()) return false;
     }
 
     return true;
@@ -59,7 +56,7 @@ class Dates extends Date {
     if (interval === undefined || interval.month === 0) {
       if (time.getMilli) {
         // SUBTRACT TIME
-        return Duration.newInstance(this.getMilli() - time.getMilli());
+        return Duration.newInstance(this.milli() - time.milli());
       }
 
       // SUBTRACT DURATION
@@ -85,7 +82,7 @@ class Dates extends Date {
   // CONVERT THIS LOCAL DATE TO GMT DATE
   subtractTimezone = () => this.addMinute(this.getTimezoneOffset());
 
-  addMilli = value => new Dates(this.getMilli() + value);
+  addMilli = value => new Dates(this.milli() + value);
 
   addSecond = value => {
     const output = new Dates(this);
@@ -173,9 +170,9 @@ class Dates extends Date {
       }
 
       if ([1, 2, 3, 4, 6].includes(interval.month)) {
-        const temp = this.floorYear();
+        const thisYear = this.floorYear();
 
-        return temp.add(this.subtract(temp).floor(interval));
+        return thisYear.add(this.subtract(thisYear).floor(interval));
       }
 
       Log.error(`Can not floor interval '${interval.toString()}'`);
@@ -274,6 +271,10 @@ Dates.newInstance = value => {
   return new Dates(value);
 };
 
+Dates.prototype.milli = Dates.prototype.getTime;
+
+
+
 Dates.currentTimestamp = Date.now;
 
 Dates.now = () => new Dates();
@@ -314,7 +315,7 @@ Dates.diffWeekday = (endTime_, startTime_) => {
   if (startTime_ <= endTime_) {
     for (
       let d = startTime_;
-      d.getMilli() < endTime_.getMilli();
+      d.milli() < endTime_.milli();
       d = d.addDay(1)
     ) {
       if (![6, 0].includes(d.dow())) out += 1;
@@ -322,7 +323,7 @@ Dates.diffWeekday = (endTime_, startTime_) => {
   } else {
     for (
       let d = endTime_;
-      d.getMilli() < startTime_.getMilli();
+      d.milli() < startTime_.milli();
       d = d.addDay(1)
     ) {
       if (![6, 0].includes(d.dow())) out -= 1;
@@ -344,10 +345,10 @@ Dates.diffWeekday = (endTime_, startTime_) => {
   const startWeek = startTime.addWeek(1).floorWeek();
   const endWeek = endTime.addMilli(-1).floorWeek();
   const output =
-    (startWeek.getMilli() -
-      startTime.getMilli() +
-      ((endWeek.getMilli() - startWeek.getMilli()) / 7) * 5 +
-      (endTime.getMilli() - endWeek.addDay(2).getMilli())) /
+    (startWeek.milli() -
+      startTime.milli() +
+      ((endWeek.milli() - startWeek.milli()) / 7) * 5 +
+      (endTime.milli() - endWeek.addDay(2).milli())) /
     Duration.DAY.milli;
 
   if (out !== sign(output) * ceiling(abs(output)))
@@ -359,15 +360,15 @@ Dates.diffWeekday = (endTime_, startTime_) => {
 Dates.diffMonth = (endTime, startTime) => {
   // MAKE SURE WE HAVE numMonths THAT IS TOO BIG;
   let numMonths = floor(
-    ((endTime.getMilli() -
-      startTime.getMilli() +
+    ((endTime.milli() -
+      startTime.milli() +
       Duration.MILLI_VALUES.day * 31) /
       Duration.MILLI_VALUES.year) *
       12
   );
   let test = startTime.addMonth(numMonths);
 
-  while (test.getMilli() > endTime.getMilli()) {
+  while (test.milli() > endTime.milli()) {
     numMonths -= 1;
     test = startTime.addMonth(numMonths);
   } // while
@@ -376,7 +377,7 @@ Dates.diffMonth = (endTime, startTime) => {
   // TEST
   let testMonth = 0;
 
-  while (startTime.addMonth(testMonth).getMilli() <= endTime.getMilli()) {
+  while (startTime.addMonth(testMonth).milli() <= endTime.milli()) {
     testMonth += 1;
   } // while
 
@@ -395,8 +396,8 @@ Dates.diffMonth = (endTime, startTime) => {
 
   output.month = numMonths;
   output.milli =
-    endTime.getMilli() -
-    startTime.addMonth(numMonths).getMilli() +
+    endTime.milli() -
+    startTime.addMonth(numMonths).milli() +
     numMonths * Duration.MILLI_VALUES.month;
 
   //  if (output.milli>=Duration.MILLI_VALUES.day*31)
@@ -1000,7 +1001,7 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
 };
 
 // ------------------------------------------------------------------
-// parseDate( date_string [,isPastDate])
+// tryParse( date_string [,isPastDate])
 //
 // This function takes a date string and tries to match it to a
 // number of possible date formats to get the value. It will try to
@@ -1047,8 +1048,35 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
     .concat(monthFirst);
 }
 
+
+const RELATIVE = {
+  today: 'floorDay',
+  'tomorrow': 'ceilingDay',
+  'eod': 'ceilingday',
+};
+
+Dates.parseRelative= (val)=>{
+  const parts = val.split("+").map(t => t.split('-').map((tt, i) => ((i === 0 ? '+' : '-') + tt))).flatten();
+  const funcName = RELATIVE[parts[0].slice(1)];
+  if (funcName){
+    let acc=Date.now()[funcName]();
+    parts.slice(1).forEach(p=>{
+      acc.add(Duration.parse(p));
+    });
+    return acc;
+  }
+  return Duration.parse(val);
+};
+
+
 Dates.tryParse = (val_, isFutureDate) => {
   const val = val_.trim();
+
+  // ATTEMPT EXPRESSIONS
+  if (RELATIVE.some(r=>val.find(r)!==-1)){
+    return Dates.parseRelative(val);
+  }
+
   let d = null;
 
   for (let i = 0; i < Dates.CheckList.length; i += 1) {
@@ -1059,10 +1087,10 @@ Dates.tryParse = (val_, isFutureDate) => {
     );
 
     if (d !== 0) {
-      const temp = Dates.CheckList[i];
+      const candidate = Dates.CheckList[i];
 
       Dates.CheckList.splice(i, 1);
-      Dates.CheckList.prepend(temp);
+      Dates.CheckList.prepend(candidate);
 
       return d;
     }

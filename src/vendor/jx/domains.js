@@ -57,19 +57,19 @@ class TimeDomain extends Domain {
     this.max = Date.newInstance(max);
     this.interval = Duration.newInstance(interval);
     this.format = format;
-    this.values = this._constructTimeRange({ min, max, interval, format });
+    this.values = this._constructTimeRange();
   }
 
-  _constructTimeRange = ({ min, max, interval, format }) => {
+  _constructTimeRange = () => {
     this.map = {};
     this.partitions = [];
 
-    for (let v = min; v.getMilli() < max.getMilli(); v = v.add(interval)) {
+    for (let v = this.min; v.milli() < this.max.milli(); v = v.add(this.interval)) {
       const partition = {
         value: v,
         min: v,
-        max: v.add(interval),
-        name: v.format(coalesce(format, DEFAULT_FORMAT)),
+        max: v.add(this.interval),
+        name: v.format(coalesce(this.format, DEFAULT_FORMAT)),
       };
 
       this.map[v] = partition;
@@ -83,10 +83,10 @@ class TimeDomain extends Domain {
   Return index into the `partitions` array for given `value`
    */
   valueToIndex(value) {
-    const dateValue = Date.newInstance(value).getMilli();
+    const dateValue = Date.newInstance(value).milli();
     const output = this.partitions.findIndex(
       part =>
-        part.min.getMilli() <= dateValue && dateValue < part.max.getMilli()
+        part.min.milli() <= dateValue && dateValue < part.max.milli()
     );
 
     if (output === -1) return this.partitions.length - 1;
@@ -105,7 +105,7 @@ Domain.newInstance = desc => {
   }
 
   if (desc.type === 'time') {
-    return TimeDomain(desc.domain);
+    return new TimeDomain(desc);
   }
 };
 

@@ -256,15 +256,15 @@ class Cube {
   }
 }
 
-function edges(rows, [...edges_]) {
-  const edges = edges_.map(Edge.newInstance);
-  const dims = edges.map(e => e.domain.partitions.length);
+function edges({name='.', data, edges}) {
+  const normalizedEdges = edges.map(Edge.newInstance);
+  const dims = normalizedEdges.map(e => e.domain.partitions.length);
   const matrix = new Matrix({ dims });
 
-  rows.forEach(row => {
-    const coord = edges.map(e => e.domain.valueToIndex(e.value(row)));
+  data.forEach(row => {
+    const coord = normalizedEdges.map(e => e.domain.valueToIndex(e.value(row)));
 
-    zip(dims, edges).forEach(([d, e], i) => {
+    zip(dims, normalizedEdges).forEach(([d, e], i) => {
       if (e.domain.type === 'value' && d < e.domain.partitions.length) {
         // last element of value domain is NULL, ensure it is still last
         matrix.insertPart(i, d - 1);
@@ -275,9 +275,7 @@ function edges(rows, [...edges_]) {
     matrix.add(coord, row);
   });
 
-  const temp = new Cube({ name: '.', matrix, edges });
-
-  return temp;
+  return  new Cube({ name: '.', matrix, edges: normalizedEdges });
 }
 
 export { Cube, edges };

@@ -166,4 +166,6 @@ class Template {
   }
 }
 
-export { Template, expand };
+Template.expand = expand;
+
+export default Template;

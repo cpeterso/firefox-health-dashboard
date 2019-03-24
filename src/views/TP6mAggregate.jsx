@@ -37,13 +37,16 @@ class TP6mAggregate extends Component {
         },
       ],
     });
-    const g5Reference = edges(
-      reference
-        .map(row => tests.map(test => ({ test, value: row[test], ...row })))
-        .flatten(),
-      ['test', 'suite', 'platform']
-    );
-    const temp = edges(data, {
+    const g5Reference = edges({
+      data:
+        reference
+          .map(row => tests.map(test => ({test, value: row[test], ...row})))
+          .flatten(),
+      edges: ['test', 'suite', 'platform'],
+    });
+
+    const temp = edges({
+      data,
       name: 'measured',
       edges: [
         'test',
@@ -59,12 +62,8 @@ class TP6mAggregate extends Component {
         'suite',
         'platform',
       ],
-    });
-
-    Log.note(temp.name);
-
+    })
     // CHECK EACH TEST/SUITE/DAY FOR MISSING VALUES
-    temp
       .window({
         name: 'daily',
         edges: ['test', 'suite', 'platform'],

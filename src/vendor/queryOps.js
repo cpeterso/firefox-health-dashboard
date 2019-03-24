@@ -290,9 +290,9 @@ class ArrayWrapper {
         return args => selector(...args);
       }
 
-      const temp = jx(selector);
+      const func = jx(selector);
 
-      return ([arg]) => temp(arg);
+      return ([arg]) => func(arg);
     });
     const sorted = lodashSortBy(Array.from(this.argsGen()), func);
 
