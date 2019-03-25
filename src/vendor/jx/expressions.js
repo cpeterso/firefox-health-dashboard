@@ -5,6 +5,7 @@
 import { exists, first, isString, missing, toArray } from '../utils';
 import Data from '../Data';
 import Date from '../dates';
+import { Log } from '../logs';
 
 const jx = expr => {
   if (isString(expr)) return row => Data.get(row, expr);
@@ -14,7 +15,7 @@ const jx = expr => {
       const func = expressions[op];
 
       if (func === undefined) {
-        throw new Error(`expecting a known operator,  not {{op}}${op}`);
+        Log.error(`expecting a known operator,  not {{op}}${op}`);
       }
 
       return func(term);
@@ -22,7 +23,7 @@ const jx = expr => {
   );
 
   if (exists(output)) return output;
-  throw new Error(`does not look like an expression: {{expr}}${expr}`);
+  Log.error(`does not look like an expression: {{expr}}${expr}`);
 };
 
 const expressions = {

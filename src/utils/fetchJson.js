@@ -1,4 +1,5 @@
 /* global fetch */
+import { Log } from '../vendor/logs';
 
 const jsonHeaders = {
   Accept: 'application/json',
@@ -11,8 +12,8 @@ const fetchJson = async url => {
   try {
     return response.json();
   } catch (error) {
-    throw new Error(`Problem parsing ${response.text()}`);
-    // throw new Error("Problem parsing {{text}}", {text: response.text()});
+    Log.error(`Problem parsing ${response.text()}`);
+    // Log.error("Problem parsing {{text}}", {text: response.text()});
   }
 };
 

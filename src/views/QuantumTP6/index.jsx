@@ -4,7 +4,7 @@ import { withStyles } from '@material-ui/core';
 import PropTypes from 'prop-types';
 import Grid from '@material-ui/core/Grid';
 import { frum } from '../../vendor/queryOps';
-import { TP6_TESTS, TP6_PAGES } from '../../quantum/config';
+import { TP6_PAGES, TP6_TESTS } from '../../quantum/config';
 import { withNavigation } from '../../vendor/utils/navigation';
 import Picker from '../../vendor/utils/navigation/Picker';
 import DashboardPage from '../../components/DashboardPage';

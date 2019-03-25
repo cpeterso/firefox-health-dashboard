@@ -81,7 +81,7 @@ const withErrorBoundary = WrappedComponent => {
     WrappedComponent.displayName &&
     WrappedComponent.displayName.startsWith('WithStyles')
   ) {
-    throw new Error(
+    Log.error(
       'Can not wrap WithStyles because componentDidMount() returns undefined'
     );
   }
@@ -102,7 +102,8 @@ const withErrorBoundary = WrappedComponent => {
 
       reportOrLog(error, info);
 
-      Log.warning(error);
+      // eslint-disable-next-line no-console
+      console.warn(error);
     }
 
     async componentDidMount() {
