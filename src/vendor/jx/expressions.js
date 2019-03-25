@@ -1,8 +1,10 @@
 /* eslint-disable linebreak-style */
 /* eslint-disable no-use-before-define */
+/* eslint-disable no-underscore-dangle */
 
-import { exists, first, isString, missing, toArray } from './utils';
-import Data from './Data';
+import { exists, first, isString, missing, toArray } from '../utils';
+import Data from '../Data';
+import Date from '../dates';
 
 const jx = expr => {
   if (isString(expr)) return row => Data.get(row, expr);
@@ -54,6 +56,35 @@ const expressions = {
 
       return value.startsWith(prefix);
     }),
+
+  gte: obj => {
+    const lookup = Object.entries(obj).map(([name, reference]) => [
+      jx(name),
+      jx(reference),
+    ]);
+
+    return row =>
+      lookup.every(([a, b]) => {
+        const av = a(row);
+        const bv = b(row);
+
+        if (missing(av) || missing(bv)) return false;
+
+        return av >= bv;
+      });
+  },
+
+  date: value => {
+    const date = Date.tryParse(value);
+
+    if (exists(date)) {
+      const val = date.unix();
+
+      return () => val;
+    }
+
+    return row => Date.newInstance(Data.get(row, value)).unix();
+  },
 };
 
 expressions.in = expressions.eq;

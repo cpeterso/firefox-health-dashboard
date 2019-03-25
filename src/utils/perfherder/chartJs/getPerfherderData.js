@@ -1,10 +1,11 @@
 import { queryPerformanceData } from '../../../vendor/perf-goggles';
 import perfherderFormatter from './perfherderFormatter';
 import SETTINGS from '../../../settings';
-import { missing } from '../../../vendor/utils';
+import { missing, array } from '../../../vendor/utils';
+import { Log } from '../../../vendor/logs';
 
 const getPerfherderData = async series => {
-  const newData = new Array(series.length);
+  const newData = array(series.length);
 
   await Promise.all(
     series.map(async ({ label, seriesConfig, options = {} }, index) => {
@@ -37,9 +38,9 @@ const getPerfherderData = async series => {
   );
 
   if (missing(newData[0]))
-    throw new Error(
-      `can not get data for ${JSON.stringify(series[0].seriesConfig)}`
-    );
+    Log.error('can not get data for {{config|json}}', {
+      config: series[0].seriesConfig,
+    });
 
   return perfherderFormatter(newData);
 };

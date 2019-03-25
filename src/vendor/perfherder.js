@@ -5,7 +5,7 @@ import { missing, toArray, first } from './utils';
 import { frum, toPairs } from './queryOps';
 import { TREEHERDER } from './perf-goggles';
 import fetchJson from '../utils/fetchJson';
-import { jx } from './expressions';
+import { jx } from './jx/expressions';
 
 // WHAT ARE THE SIGNATURES OF THE loadtime?
 // GET ALL SIGNATURES FOR framework=10
@@ -76,17 +76,17 @@ const getSignatures = async (framework, condition) => {
 };
 
 const dataCache = {};
-const getDataBySignature = async signatures => {
+const getDataBySignature = async metadatas => {
   // SCHEDULE ANY MISSING SIGNATURES
-  frum(signatures)
-    .filter(s => missing(dataCache[s]))
+  frum(metadatas)
+    .filter(({ signature }) => missing(dataCache[signature]))
     .chunk(20)
-    .forEach(sigs => {
+    .forEach(chunkOfMetas => {
       // GET ALL SIGNATURES IN THE CHUNK
       const getData = (async () => {
         const url = `${TREEHERDER}/api/project/${repository}/performance/data/?${toQueryString(
           {
-            signatures: sigs,
+            signatures: chunkOfMetas.select('signature'),
           }
         )}`;
 
@@ -94,21 +94,24 @@ const getDataBySignature = async signatures => {
       })();
 
       // EACH dataCache IS A PROMISE TO THE SPECIFIC DATA
-      frum(sigs).forEach(signature => {
-        dataCache[signature] = (async () => ({
-          signature,
-          data: (await getData)[signature],
-        }))();
+      frum(chunkOfMetas).forEach(meta => {
+        dataCache[meta.signature] = (async () =>
+          (await getData)[meta.signature].map(({ value, push_timestamp }) => ({
+            value,
+            push_timestamp,
+            ...meta,
+          })))();
       });
     });
 
-  return Promise.all(signatures.map(s => dataCache[s]).toArray());
+  return Promise.all(toArray(metadatas).map(m => dataCache[m.signature]));
 };
 
 const getData = async (framework, condition) => {
   const signatures = await getSignatures(framework, condition);
+  const output = await getDataBySignature(signatures);
 
-  return getDataBySignature(frum(signatures).select('signature'));
+  return frum(output).flatten();
 };
 
 export { getSignatures, getData };

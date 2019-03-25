@@ -1,20 +1,20 @@
 /* eslint-disable no-restricted-syntax */
 
 import { toPairs } from './queryOps';
+import { Log } from './logs';
 import {
   coalesce,
   exists,
   isArray,
-  isObject,
-  isInteger,
   isData,
+  isInteger,
   missing,
   splitField,
 } from './utils';
 
 const Data = (key, value) => {
   if (key == null) {
-    throw new Error('expecting a string key');
+    Log.error('expecting a string key');
   }
 
   const output = {};
@@ -63,8 +63,7 @@ Data.setDefault = (dest, ...args) => {
       if (missing(value)) {
         output[key] = sourceValue;
       } else if (path.indexOf(value) !== -1) {
-        // eslint-disable-next-line no-console
-        console.warn('possible loop');
+        Log.warning('possible loop');
       } else if (isData(value)) {
         setDefault(value, sourceValue, path.concat([value]));
       }
@@ -110,9 +109,9 @@ Data.get = (obj, path) => {
       } else if (isInteger(step)) {
         output = output[step];
       } else if (isArray(output)) {
-        output = output.map(o => (isObject(o) ? o[step] : null));
+        output = output.map(o => (isData(o) ? o[step] : null));
       }
-    } else if (isObject(output)) {
+    } else if (isData(output)) {
       output = output[step];
     } else {
       return null;
@@ -126,7 +125,7 @@ Data.get = (obj, path) => {
 
 Data.set = (obj, path, value) => {
   if (missing(obj) || path === '.')
-    throw new Error('must be given an object and field');
+    Log.error('must be given an object and field');
 
   const split = splitField(path);
   const [last] = split.slice(-1);
@@ -151,7 +150,7 @@ Data.set = (obj, path, value) => {
 
 Data.add = (obj, path, value) => {
   if (missing(obj) || path === '.')
-    throw new Error('must be given an object and field');
+    Log.error('must be given an object and field');
 
   const split = splitField(path);
   const [last] = split.slice(-1);

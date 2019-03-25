@@ -3,6 +3,11 @@
 import { ArrayWrapper } from './queryOps';
 
 const { isArray } = Array;
+const zero = () => 0;
+
+function array(length = 0) {
+  return new Array(length).fill(null);
+}
 
 function missing(value) {
   // return true if value is null, or undefined, or not a legit value
@@ -76,16 +81,11 @@ function isInteger(n) {
   return Number.isInteger(n);
 }
 
-function isObject(val) {
-  if (missing(val) || isArray(val)) {
-    return false;
-  }
-
-  return typeof val === 'function' || typeof val === 'object';
-}
-
+/*
+ * objects that are best serialized as JSON objects
+ */
 function isData(val) {
-  if (missing(val)) {
+  if (missing(val) || isArray(val) || val instanceof ArrayWrapper) {
     return false;
   }
 
@@ -98,6 +98,15 @@ function isFunction(f) {
 
 function literalField(fieldname) {
   return fieldname.replace(/\./g, '\\.');
+}
+
+/*
+expecting Array of Arrays, return transpose
+ */
+function zip(...args) {
+  const length = Math.max(...args.map(a => a.length));
+
+  return array(length).map((_, i) => args.map(a => a[i]));
 }
 
 function splitField(fieldname) {
@@ -138,9 +147,11 @@ export {
   coalesce,
   isString,
   isData,
-  isObject,
   splitField,
   joinField,
   literalField,
   concatField,
+  zip,
+  array,
+  zero,
 };

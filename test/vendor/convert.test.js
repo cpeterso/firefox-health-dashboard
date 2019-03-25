@@ -1,9 +1,10 @@
+/* eslint-disable linebreak-style */
 /* global describe, it */
 import {
   value2json,
   json2value,
   toQueryString,
-  FromQueryString,
+  fromQueryString,
 } from '../../src/vendor/convert';
 
 describe('convert', () => {
@@ -44,43 +45,58 @@ describe('convert', () => {
   });
 
   const reversable = [
-    [{ a: '{}' }, 'a=%7B%7D'],
-    [{ a: '=' }, 'a=%3D'],
-    [{ a: '+' }, 'a=%2B'],
-    [{ a: false }, 'a=false'],
-    [{ a: true }, 'a'],
-    // https://www.w3.org/Addressing/URL/uri-spec.html#z5
-    // https://tools.ietf.org/html/rfc3986#section-3.4
-    // https://www.google.com/search?q=query+string+with+spaces
-    [{ a: ' ' }, 'a=+'],
-    [{ a: '  ' }, 'a=++'],
-    [{ a: 'blue+light blue' }, 'a=blue%2Blight+blue'],
-    [{ a: '{"test":42}' }, 'a=%7B%22test%22%3A42%7D'],
-    [{ a: { test: 42 } }, 'a.test=42'],
-    [{ a: [1, 2, 3] }, 'a=1&a=2&a=3'],
-    [{ a: { b: { c: 42 } } }, 'a.b.c=42'],
-    [{ a: 'test' }, 'a=test'],
-    [{ a: 'a b' }, 'a=a+b'],
-    [{ a: 'a b c d' }, 'a=a+b+c+d'],
-    [{ a: '=a' }, 'a=%3Da'],
-    [{ a: '%' }, 'a=%25'],
-    [{ a: 'ståle' }, 'a=st%C3%A5le'],
+    { a: '{}' },
+    { a: '[]' },
+    { a: '\\' },
+    { a: '"' },
+    { a: '%' },
+    { a: '+' },
+    { a: '=' },
+    { a: '=a' },
+    { a: 'null' },
+    { a: false },
+    { a: 'false' },
+    { a: true },
+    { a: 'true' },
+    { a: 42 },
+    { a: '42' },
+    { a: ' ' },
+    { a: '  ' },
+    { a: 'blue+light blue' },
+    { a: '{"test":42}' },
+    { a: { test: 42 } },
+    { a: [1, 2, 3] },
+    { a: { b: { c: 42 } } },
+    { a: 'test' },
+    { a: 'a b' },
+    { a: 'a b c d' },
+    { a: 'ståle' },
   ];
 
-  it('toQueryString1', () => {
-    reversable.forEach(([obj, url]) => expect(toQueryString(obj)).toEqual(url));
-  });
+  it('reversable', () => {
+    reversable.forEach(obj =>
+      expect(
+        (() => {
+          const qs = toQueryString(obj);
 
-  const toQuery = [[{ a: null }, ''], [{ a: [1, null, ''] }, 'a=1']];
+          // eslint-disable-next-line no-console
+          console.log(`${JSON.stringify(obj)}  <=>  ${JSON.stringify(qs)}`);
 
-  it('toQueryString2', () => {
-    toQuery.forEach(([obj, url]) => expect(toQueryString(obj)).toEqual(url));
-  });
-
-  it('FromQueryString1', () => {
-    reversable.forEach(([obj, url]) =>
-      expect(FromQueryString(url)).toEqual(obj)
+          return fromQueryString(qs);
+        })()
+      ).toEqual(obj)
     );
+  });
+
+  const toQuery = [
+    [{ a: null }, ''],
+    [{ a: [1, null, ''] }, 'a=1'],
+    [{ a: ' ' }, 'a=+'],
+    [{ a: '  ' }, 'a=++'],
+  ];
+
+  it('toQueryString', () => {
+    toQuery.forEach(([obj, url]) => expect(toQueryString(obj)).toEqual(url));
   });
 
   const nonStandardQueryStrings = [
@@ -119,11 +135,11 @@ describe('convert', () => {
 
   it('AcceptNonStandardQueryStrings', () => {
     nonStandardQueryStrings.forEach(([obj, url]) =>
-      expect(FromQueryString(url)).toEqual(obj)
+      expect(fromQueryString(url)).toEqual(obj)
     );
   });
 
   it('KeyWithoutValueIsTruthy', () => {
-    expect(FromQueryString('a').a).toBeTruthy();
+    expect(fromQueryString('a').a).toBeTruthy();
   });
 });
