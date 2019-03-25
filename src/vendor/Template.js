@@ -1,4 +1,4 @@
-import { array, coalesce, isArray, isObject, isString, missing } from './utils';
+import { array, coalesce, isArray, isData, isString, missing } from './utils';
 import { toPairs } from './queryOps';
 import { Log } from './logs';
 import Data from './Data';
@@ -20,7 +20,7 @@ function expandLoop(loop, namespaces) {
     .map(m => {
       const ns = Data.copy(namespaces[0]);
 
-      if (isObject(m)) {
+      if (isData(m)) {
         toPairs(m).forEach((v, k) => {
           ns[k.toLowerCase()] = v;
         });

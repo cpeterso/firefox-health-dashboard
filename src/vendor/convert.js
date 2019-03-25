@@ -5,7 +5,7 @@ import {
   exists,
   isArray,
   isFunction,
-  isObject,
+  isData,
   isString,
   toArray,
 } from './utils';
@@ -50,7 +50,8 @@ function toQueryString(value) {
         return `${e(k)}=${e(vv)}`;
       })
       .join('&');
-  const output = leaves(value)
+  const temp = leaves;
+  const output = temp(value)
     .map(encode)
     .concatenate('&');
 
@@ -101,7 +102,7 @@ function prettyJSON(json, maxDepth) {
       //   return convert.String2Quote(json.format("dd-NNN-yyyy HH:mm:ss"));
     }
 
-    if (isObject(json)) {
+    if (isData(json)) {
       const output = toPairs(json)
         .map((v, k) => {
           if (v === undefined) return;

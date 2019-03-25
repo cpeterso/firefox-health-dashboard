@@ -6,9 +6,8 @@ import {
   coalesce,
   exists,
   isArray,
-  isObject,
-  isInteger,
   isData,
+  isInteger,
   missing,
   splitField,
 } from './utils';
@@ -110,9 +109,9 @@ Data.get = (obj, path) => {
       } else if (isInteger(step)) {
         output = output[step];
       } else if (isArray(output)) {
-        output = output.map(o => (isObject(o) ? o[step] : null));
+        output = output.map(o => (isData(o) ? o[step] : null));
       }
-    } else if (isObject(output)) {
+    } else if (isData(output)) {
       output = output[step];
     } else {
       return null;

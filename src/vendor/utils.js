@@ -81,16 +81,11 @@ function isInteger(n) {
   return Number.isInteger(n);
 }
 
-function isObject(val) {
-  if (missing(val) || isArray(val)) {
-    return false;
-  }
-
-  return typeof val === 'function' || typeof val === 'object';
-}
-
+/*
+ * objects that are best serialized as JSON objects
+ */
 function isData(val) {
-  if (missing(val)) {
+  if (missing(val) || isArray(val) || val instanceof ArrayWrapper) {
     return false;
   }
 
@@ -152,7 +147,6 @@ export {
   coalesce,
   isString,
   isData,
-  isObject,
   splitField,
   joinField,
   literalField,

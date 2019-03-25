@@ -5,17 +5,21 @@
 import {
   coalesce,
   exists,
+  isInteger,
   isNumeric,
   isString,
   last,
-  isInteger,
+  missing,
+  first,
 } from './utils';
+import { frum } from './queryOps';
 import { Duration } from './durations';
 import { abs, ceiling, floor, round, sign } from './math';
 import { Log } from './logs';
 
-class Dates extends Date {
+const twoDigits = x => (x < 0 || x > 9 ? '' : '0') + x;
 
+class GMTDate extends Date {
   unix = () =>
     // RETURN NUMBER OF SECONDS SINCE EPOCH
     this.milli() / 1000.0; // function
@@ -50,7 +54,7 @@ class Dates extends Date {
   subtract = (time, interval) => {
     if (typeof time === 'string')
       Log.error(
-        'expecting to subtract a Duration or Dates object, not a string'
+        'expecting to subtract a Duration or GMTDate object, not a string'
       );
 
     if (interval === undefined || interval.month === 0) {
@@ -67,14 +71,14 @@ class Dates extends Date {
 
     if (time.getMilli) {
       // SUBTRACT TIME
-      return Dates.diffMonth(this, time);
+      return GMTDate.diffMonth(this, time);
     }
 
     // SUBTRACT DURATION
     return this.addMilli(-time.milli);
   };
 
-  dow = Dates.prototype.getUTCDay;
+  dow = GMTDate.prototype.getUTCDay;
 
   // CONVERT THIS GMT DATE TO LOCAL DATE
   addTimezone = () => this.addMinute(-this.getTimezoneOffset());
@@ -82,10 +86,10 @@ class Dates extends Date {
   // CONVERT THIS LOCAL DATE TO GMT DATE
   subtractTimezone = () => this.addMinute(this.getTimezoneOffset());
 
-  addMilli = value => new Dates(this.milli() + value);
+  addMilli = value => new GMTDate(this.milli() + value);
 
   addSecond = value => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCSeconds(this.getUTCSeconds() + value);
 
@@ -93,7 +97,7 @@ class Dates extends Date {
   };
 
   addMinute = value => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCMinutes(this.getUTCMinutes() + value);
 
@@ -101,7 +105,7 @@ class Dates extends Date {
   };
 
   addHour = value => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCHours(this.getUTCHours() + value);
 
@@ -110,7 +114,7 @@ class Dates extends Date {
 
   addDay = value => {
     const value_ = coalesce(value, 1);
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCDate(this.getUTCDate() + value_);
 
@@ -135,7 +139,7 @@ class Dates extends Date {
 
   addWeek = value => {
     const value_ = coalesce(value, 1);
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCDate(this.getUTCDate() + value_ * 7);
 
@@ -144,7 +148,7 @@ class Dates extends Date {
 
   addMonth = value => {
     if (value === 0) return this; // WHOA! SETTING MONTH IS CRAZY EXPENSIVE!!
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCMonth(this.getUTCMonth() + value);
 
@@ -152,7 +156,7 @@ class Dates extends Date {
   };
 
   addYear = value => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCFullYear(this.getUTCFullYear() + value);
 
@@ -197,7 +201,7 @@ class Dates extends Date {
   };
 
   floorYear = () => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCMonth(0, 1);
     output.setUTCHours(0, 0, 0, 0);
@@ -206,7 +210,7 @@ class Dates extends Date {
   };
 
   floorMonth = () => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCDate(1);
     output.setUTCHours(0, 0, 0, 0);
@@ -215,7 +219,7 @@ class Dates extends Date {
   };
 
   floorWeek = () => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCDate(this.getUTCDate() - this.getUTCDay());
     output.setUTCHours(0, 0, 0, 0);
@@ -224,7 +228,7 @@ class Dates extends Date {
   };
 
   floorDay = () => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCHours(0, 0, 0, 0);
 
@@ -232,7 +236,7 @@ class Dates extends Date {
   };
 
   floorHour = () => {
-    const output = new Dates(this);
+    const output = new GMTDate(this);
 
     output.setUTCMinutes(0);
 
@@ -246,13 +250,87 @@ class Dates extends Date {
   ceilingMonth = () => this.floorMonth().addMonth(1);
 
   ceiling = interval => this.floor(interval).add(interval);
+
+  // ------------------------------------------------------------------
+  // formatDate(date_object, format);
+  // Returns a date in the output format specified.
+  // The format string uses the same abbreviations as in getDateFromFormat()
+  // ------------------------------------------------------------------
+  format = format => {
+    const y = `${this.getUTCFullYear()}`;
+    const M = this.getUTCMonth() + 1;
+    const d = this.getUTCDate();
+    const E = this.getUTCDay();
+    const H = this.getUTCHours();
+    const m = this.getUTCMinutes();
+    const s = this.getUTCSeconds();
+    const f = this.getUTCMilliseconds();
+    const v = {};
+
+    v.y = y;
+    v.yyyy = y;
+    v.yy = y.slice(2, 4);
+    v.M = M;
+    v.MM = twoDigits(M);
+    v.MMM = GMTDate.MONTH_NAMES[M - 1];
+    v.NNN = GMTDate.MONTH_NAMES[M + 11];
+    v.days = (() => {
+      if (d === 1) return '';
+
+      if (d === 2) return '1 day';
+
+      return `${d - 1} days`;
+    })();
+    v.d = d;
+    v.dd = twoDigits(d);
+    v.E = GMTDate.DAY_NAMES[E + 7];
+    v.EE = GMTDate.DAY_NAMES[E];
+    v.H = H;
+    v.HH = twoDigits(H);
+    v.h = ((H + 11) % 12) + 1;
+    v.hh = twoDigits(v.h);
+    v.hours = `${(d - 1) * H} hours`;
+    v.K = H % 12;
+    v.KK = twoDigits(v.K);
+    v.k = H + 1;
+    v.kk = twoDigits(v.k);
+    v.a = ['AM', 'PM'][floor(H / 12)];
+    v.m = m;
+    v.mm = twoDigits(m);
+    v.s = s;
+    v.ss = twoDigits(s);
+    v.fff = f;
+    v.ffffff = f * 1000;
+
+    let output = '';
+
+    for (let index = 0; index < format.length; index += 1) {
+      let i = 0;
+
+      for (; i < GMTDate.KEYS.length; i += 1) {
+        const k = GMTDate.KEYS[i];
+
+        if (format.slice(index, index + k.length) === k) {
+          output += v[k];
+          index += k.length - 1;
+          break;
+        }
+      }
+
+      if (i === GMTDate.KEYS.length) {
+        output += format.charAt(index);
+      }
+    }
+
+    return output;
+  };
 }
 
-Dates.newInstance = value => {
-  if (value === undefined || value === null) return null;
+GMTDate.newInstance = value => {
+  if (missing(value)) return null;
 
   if (isString(value)) {
-    const newval = Dates.tryParse(value);
+    const newval = GMTDate.tryParse(value);
 
     if (newval !== null) return newval;
   }
@@ -262,28 +340,26 @@ Dates.newInstance = value => {
 
     if (value <= 9999999999) {
       // TOO SMALL, MUST BE A UNIX TIMESTAMP
-      return new Dates(value * 1000);
+      return new GMTDate(value * 1000);
     }
 
-    return new Dates(value);
+    return new GMTDate(value);
   }
 
-  return new Dates(value);
+  return new GMTDate(value);
 };
 
-Dates.prototype.milli = Dates.prototype.getTime;
+GMTDate.prototype.milli = GMTDate.prototype.getTime;
 
+GMTDate.currentTimestamp = Date.now;
 
+GMTDate.now = () => new GMTDate();
 
-Dates.currentTimestamp = Date.now;
+GMTDate.eod = () => new GMTDate().ceilingDay();
 
-Dates.now = () => new Dates();
+GMTDate.today = () => new GMTDate().floorDay();
 
-Dates.eod = () => new Dates().ceilingDay();
-
-Dates.today = () => new Dates().floorDay();
-
-Dates.min = (...args) => {
+GMTDate.min = (...args) => {
   let min = null;
 
   args.forEach(v => {
@@ -295,7 +371,7 @@ Dates.min = (...args) => {
   return min;
 };
 
-Dates.max = (...args) => {
+GMTDate.max = (...args) => {
   let max = null;
 
   args.forEach(a => {
@@ -308,24 +384,16 @@ Dates.max = (...args) => {
 };
 
 // RETURN THE NUMBER OF WEEKDAYS BETWWEN GIVEN TIMES
-Dates.diffWeekday = (endTime_, startTime_) => {
+GMTDate.diffWeekday = (endTime_, startTime_) => {
   let out = 0;
 
   // TEST
   if (startTime_ <= endTime_) {
-    for (
-      let d = startTime_;
-      d.milli() < endTime_.milli();
-      d = d.addDay(1)
-    ) {
+    for (let d = startTime_; d.milli() < endTime_.milli(); d = d.addDay(1)) {
       if (![6, 0].includes(d.dow())) out += 1;
     }
   } else {
-    for (
-      let d = endTime_;
-      d.milli() < startTime_.milli();
-      d = d.addDay(1)
-    ) {
+    for (let d = endTime_; d.milli() < startTime_.milli(); d = d.addDay(1)) {
       if (![6, 0].includes(d.dow())) out -= 1;
     }
   }
@@ -357,12 +425,10 @@ Dates.diffWeekday = (endTime_, startTime_) => {
   return output;
 };
 
-Dates.diffMonth = (endTime, startTime) => {
+GMTDate.diffMonth = (endTime, startTime) => {
   // MAKE SURE WE HAVE numMonths THAT IS TOO BIG;
   let numMonths = floor(
-    ((endTime.milli() -
-      startTime.milli() +
-      Duration.MILLI_VALUES.day * 31) /
+    ((endTime.milli() - startTime.milli() + Duration.MILLI_VALUES.day * 31) /
       Duration.MILLI_VALUES.year) *
       12
   );
@@ -437,7 +503,7 @@ Dates.diffMonth = (endTime, startTime) => {
 //  "MMM dd, yyyy hh:mm:ssa" matches: "January 01, 2000 12:30:45AM"
 // ------------------------------------------------------------------
 
-Dates.MONTH_NAMES = [
+GMTDate.MONTH_NAMES = [
   'January',
   'February',
   'March',
@@ -463,7 +529,7 @@ Dates.MONTH_NAMES = [
   'Nov',
   'Dec',
 ];
-Dates.DAY_NAMES = [
+GMTDate.DAY_NAMES = [
   'Sunday',
   'Monday',
   'Tuesday',
@@ -480,9 +546,7 @@ Dates.DAY_NAMES = [
   'Sat',
 ];
 
-const twoDigits = x => (x < 0 || x > 9 ? '' : '0') + x;
-
-Dates.KEYS = [
+GMTDate.KEYS = [
   'ffffff',
   'hours',
   'yyyy',
@@ -513,81 +577,7 @@ Dates.KEYS = [
   'M',
 ];
 
-// ------------------------------------------------------------------
-// formatDate(date_object, format);
-// Returns a date in the output format specified.
-// The format string uses the same abbreviations as in getDateFromFormat()
-// ------------------------------------------------------------------
-Dates.prototype.format = format => {
-  const y = `${this.getUTCFullYear()}`;
-  const M = this.getUTCMonth() + 1;
-  const d = this.getUTCDate();
-  const E = this.getUTCDay();
-  const H = this.getUTCHours();
-  const m = this.getUTCMinutes();
-  const s = this.getUTCSeconds();
-  const f = this.getUTCMilliseconds();
-  const v = {};
-
-  v.y = y;
-  v.yyyy = y;
-  v.yy = y.substring(2, 4);
-  v.M = M;
-  v.MM = twoDigits(M);
-  v.MMM = Dates.MONTH_NAMES[M - 1];
-  v.NNN = Dates.MONTH_NAMES[M + 11];
-  v.days = (() => {
-    if (d === 1) return '';
-
-    if (d === 2) return '1 day';
-
-    return `${d - 1} days`;
-  })();
-  v.d = d;
-  v.dd = twoDigits(d);
-  v.E = Dates.DAY_NAMES[E + 7];
-  v.EE = Dates.DAY_NAMES[E];
-  v.H = H;
-  v.HH = twoDigits(H);
-  v.h = ((H + 11) % 12) + 1;
-  v.hh = twoDigits(v.h);
-  v.hours = `${(d - 1) * H} hours`;
-  v.K = H % 12;
-  v.KK = twoDigits(v.K);
-  v.k = H + 1;
-  v.kk = twoDigits(v.k);
-  v.a = ['AM', 'PM'][floor(H / 12)];
-  v.m = m;
-  v.mm = twoDigits(m);
-  v.s = s;
-  v.ss = twoDigits(s);
-  v.fff = f;
-  v.ffffff = f * 1000;
-
-  let output = '';
-
-  for (let index = 0; index < format.length; index += 1) {
-    let i = 0;
-
-    for (; i < Dates.KEYS.length; i += 1) {
-      const k = Dates.KEYS[i];
-
-      if (format.substring(index, index + k.length) === k) {
-        output += v[k];
-        index += k.length - 1;
-        break;
-      }
-    }
-
-    if (i === Dates.KEYS.length) {
-      output += format.charAt(index);
-    }
-  }
-
-  return output;
-};
-
-Dates.Timezones = {
+GMTDate.Timezones = {
   GMT: 0,
   EST: -5,
   CST: -6,
@@ -595,10 +585,10 @@ Dates.Timezones = {
   PST: -8,
 };
 
-Dates.getTimezone = () => {
-  Log.warning('Dates.getTimezone is incomplete!');
-  Dates.getTimezone = () => {
-    const offset = new Dates().getTimezoneOffset();
+GMTDate.getTimezone = () => {
+  Log.warning('GMTDate.getTimezone is incomplete!');
+  GMTDate.getTimezone = () => {
+    const offset = new GMTDate().getTimezoneOffset();
 
     // CHEAT AND SIMPLY GUESS
     if (offset === 240 || offset === 300) return 'EDT';
@@ -608,13 +598,13 @@ Dates.getTimezone = () => {
     return `(${round(offset / 60)}GMT)`;
   };
 
-  return Dates.getTimezone();
+  return GMTDate.getTimezone();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // WHAT IS THE MOST COMPACT DATE FORMAT TO DISTINGUISH THE RANGE
 // //////////////////////////////////////////////////////////////////////////////
-Dates.niceFormat = ({ type, min, max, interval }) => {
+GMTDate.niceFormat = ({ type, min, max, interval }) => {
   if (!['date', 'time'].includes(type)) Log.error('Expecting a time domain');
 
   let minFormat = 0; // SECONDS
@@ -672,7 +662,12 @@ Dates.niceFormat = ({ type, min, max, interval }) => {
   ][minFormat][maxFormat];
 };
 
-Dates.getBestInterval = (minDate, maxDate, requestedInterval, { min, max }) => {
+GMTDate.getBestInterval = (
+  minDate,
+  maxDate,
+  requestedInterval,
+  { min, max }
+) => {
   let dur = maxDate.subtract(minDate);
 
   if (dur.milli > Duration.MONTH.milli * min) {
@@ -709,7 +704,7 @@ Dates.getBestInterval = (minDate, maxDate, requestedInterval, { min, max }) => {
 
 function _getInt(str, i, minlength, maxlength) {
   for (let x = maxlength; x >= minlength; x -= 1) {
-    const token = str.substring(i, i + x);
+    const token = str.slice(i, i + x);
 
     if (token.length < minlength) {
       return null;
@@ -745,9 +740,11 @@ function internalChecks(year, month, date, hh_, mm, ss, fff, ampm) {
     hh -= 12;
   }
 
-  const newDate = new Dates(Dates.UTC(year, month - 1, date, hh, mm, ss, fff));
+  const newDate = new GMTDate(
+    GMTDate.UTC(year, month - 1, date, hh, mm, ss, fff)
+  );
 
-  // newDate=newDate.addMinutes(new Dates().getTimezoneOffset());
+  // newDate=newDate.addMinutes(new GMTDate().getTimezoneOffset());
   return newDate;
 }
 
@@ -762,7 +759,7 @@ function internalChecks(year, month, date, hh_, mm, ss, fff, ampm) {
 // OUT A TIMESHEET (FOR EXAMPLE) OR IN THE FUTURE (false) WHEN
 // SETTING AN APPOINTMENT DATE
 // ------------------------------------------------------------------
-Dates.getDateFromFormat = (val_, format_, isPastDate) => {
+GMTDate.getDateFromFormat = (val_, format_, isPastDate) => {
   const val = `${val_}`;
   const format = `${format_}`;
   let valueIndex = 0;
@@ -770,7 +767,7 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
   let token = '';
   let x;
   let y;
-  const now = new Dates();
+  const now = new GMTDate();
   // DATE BUILDING VARIABLES
   let year = null;
   let month = now.getMonth() + 1;
@@ -822,8 +819,8 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
     } else if (token === 'MMM' || token === 'NNN') {
       month = 0;
 
-      for (let i = 0; i < Dates.MONTH_NAMES.length; i += 1) {
-        const monthName = Dates.monthNameS[i];
+      for (let i = 0; i < GMTDate.MONTH_NAMES.length; i += 1) {
+        const monthName = GMTDate.monthNameS[i];
         let prefixLength = 0;
 
         while (
@@ -851,13 +848,12 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
         return 0;
       }
     } else if (token === 'EE' || token === 'E') {
-      for (let i = 0; i < Dates.DAY_NAMES.length; i += 1) {
-        const dayName = Dates.DAY_NAMES[i];
+      for (let i = 0; i < GMTDate.DAY_NAMES.length; i += 1) {
+        const dayName = GMTDate.DAY_NAMES[i];
 
         if (
-          val
-            .substring(valueIndex, valueIndex + dayName.length)
-            .toLowerCase() === dayName.toLowerCase()
+          val.slice(valueIndex, valueIndex + dayName.length).toLowerCase() ===
+          dayName.toLowerCase()
         ) {
           valueIndex += dayName.length;
           break;
@@ -946,11 +942,9 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
       fff /= 1000;
       valueIndex += fff.length;
     } else if (token === 'a') {
-      if (val.substring(valueIndex, valueIndex + 2).toLowerCase() === 'am') {
+      if (val.slice(valueIndex, valueIndex + 2).toLowerCase() === 'am') {
         ampm = 'AM';
-      } else if (
-        val.substring(valueIndex, valueIndex + 2).toLowerCase() === 'pm'
-      ) {
+      } else if (val.slice(valueIndex, valueIndex + 2).toLowerCase() === 'pm') {
         ampm = 'PM';
       } else {
         return 0;
@@ -960,7 +954,7 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
     } else if (token.trim() === '') {
       while (val.charCodeAt(valueIndex) <= 32) valueIndex += 1;
     } else {
-      if (val.substring(valueIndex, valueIndex + token.length) !== token) {
+      if (val.slice(valueIndex, valueIndex + token.length) !== token) {
         return 0;
       }
 
@@ -1042,55 +1036,59 @@ Dates.getDateFromFormat = (val_, format_, isPastDate) => {
     'd - M',
   ];
 
-  Dates.CheckList = []
+  GMTDate.CheckList = []
     .concat(generalFormats)
     .concat(dateFirst)
     .concat(monthFirst);
 }
 
-
 const RELATIVE = {
   today: 'floorDay',
-  'tomorrow': 'ceilingDay',
-  'eod': 'ceilingday',
+  tomorrow: 'ceilingDay',
+  eod: 'ceilingday',
 };
 
-Dates.parseRelative= (val)=>{
-  const parts = val.split("+").map(t => t.split('-').map((tt, i) => ((i === 0 ? '+' : '-') + tt))).flatten();
-  const funcName = RELATIVE[parts[0].slice(1)];
-  if (funcName){
-    let acc=Date.now()[funcName]();
-    parts.slice(1).forEach(p=>{
-      acc.add(Duration.parse(p));
+GMTDate.parseRelative = val => {
+  const parts = frum(val.split('+'))
+    .map(t => t.split('-').map((tt, i) => [i === 0 ? 'add' : 'subtract', tt]))
+    .flatten();
+  const funcName = RELATIVE[first(parts)[1]];
+
+  if (funcName) {
+    let acc = GMTDate.now()[funcName]();
+
+    parts.slice(1).forEach(([op, amount]) => {
+      acc = acc[op](Duration.String2Duration(amount));
     });
+
     return acc;
   }
+
   return Duration.parse(val);
 };
 
-
-Dates.tryParse = (val_, isFutureDate) => {
+GMTDate.tryParse = (val_, isFutureDate) => {
   const val = val_.trim();
 
   // ATTEMPT EXPRESSIONS
-  if (RELATIVE.some(r=>val.find(r)!==-1)){
-    return Dates.parseRelative(val);
+  if (Object.keys(RELATIVE).some(r => val.includes(r))) {
+    return GMTDate.parseRelative(val);
   }
 
   let d = null;
 
-  for (let i = 0; i < Dates.CheckList.length; i += 1) {
-    d = Dates.getDateFromFormat(
+  for (let i = 0; i < GMTDate.CheckList.length; i += 1) {
+    d = GMTDate.getDateFromFormat(
       val,
-      Dates.CheckList[i],
+      GMTDate.CheckList[i],
       !coalesce(isFutureDate, false)
     );
 
     if (d !== 0) {
-      const candidate = Dates.CheckList[i];
+      const candidate = GMTDate.CheckList[i];
 
-      Dates.CheckList.splice(i, 1);
-      Dates.CheckList.prepend(candidate);
+      GMTDate.CheckList.splice(i, 1);
+      GMTDate.CheckList.prepend(candidate);
 
       return d;
     }
@@ -1099,12 +1097,12 @@ Dates.tryParse = (val_, isFutureDate) => {
   return null;
 };
 
-Dates.EPOCH = Dates.newInstance('1/1/1970');
+GMTDate.EPOCH = GMTDate.newInstance('1/1/1970');
 
-Dates.range = ({ min, max, interval }) => {
+GMTDate.range = ({ min, max, interval }) => {
   const output = [];
-  const min_ = Dates.newInstance(min);
-  const max_ = Dates.newInstance(max);
+  const min_ = GMTDate.newInstance(min);
+  const max_ = GMTDate.newInstance(max);
   const interval_ = Duration.newInstance(interval);
   let acc = min_;
 
@@ -1115,4 +1113,4 @@ Dates.range = ({ min, max, interval }) => {
   return output;
 };
 
-export default Dates;
+export default GMTDate;

@@ -61,10 +61,13 @@ class TimeDomain extends Domain {
   }
 
   _constructTimeRange = () => {
-    this.map = {};
     this.partitions = [];
 
-    for (let v = this.min; v.milli() < this.max.milli(); v = v.add(this.interval)) {
+    for (
+      let v = this.min;
+      v.milli() < this.max.milli();
+      v = v.add(this.interval)
+    ) {
       const partition = {
         value: v,
         min: v,
@@ -72,7 +75,6 @@ class TimeDomain extends Domain {
         name: v.format(coalesce(this.format, DEFAULT_FORMAT)),
       };
 
-      this.map[v] = partition;
       this.partitions.push(partition);
     } // for
 
@@ -84,14 +86,12 @@ class TimeDomain extends Domain {
    */
   valueToIndex(value) {
     const dateValue = Date.newInstance(value).milli();
-    const output = this.partitions.findIndex(
+
+    return this.partitions.findIndex(
       part =>
-        part.min.milli() <= dateValue && dateValue < part.max.milli()
+        part === NULL ||
+        (part.min.milli() <= dateValue && dateValue < part.max.milli())
     );
-
-    if (output === -1) return this.partitions.length - 1;
-
-    return output;
   }
 
   *[Symbol.iterator]() {

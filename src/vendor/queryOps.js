@@ -1,5 +1,4 @@
 /* eslint-disable no-restricted-syntax */
-import chunk from 'lodash/chunk';
 import unzip from 'lodash/unzip';
 import lodashSortBy from 'lodash/sortBy';
 import {
@@ -7,18 +6,22 @@ import {
   exists,
   first,
   isArray,
-  isObject,
+  isData,
   isString,
   last,
   literalField,
   missing,
   toArray,
   isFunction,
+  zip,
 } from './utils';
 import { sum } from './math';
 import { Log } from './logs';
 import Data from './Data';
 import { jx } from './jx/expressions';
+import Edge from './jx/Edge';
+import Matrix from './jx/Matrix';
+import Cube from './jx/Cube';
 
 let internalFrum = null;
 let internalToPairs = null;
@@ -66,7 +69,7 @@ function selector(columnName) {
          selector({x: 'a', y: 'b'})(row) === {x: 1, y: '2'}
 
    */
-  if (isObject(columnName) || isArray(columnName)) {
+  if (isData(columnName) || isArray(columnName)) {
     // select many columns
     const cs = preSelector(columnName).args();
 
@@ -157,7 +160,22 @@ class ArrayWrapper {
     return new ArrayWrapper(() => output(this.argslist));
   }
 
+  slice(start) {
+    // restrict to just rows with index >= start
+    function* output(argslist) {
+      let i = 0;
+
+      for (const args of argslist) {
+        if (i >= start) yield args;
+        i += 1;
+      }
+    }
+
+    return new ArrayWrapper(() => output(this.argslist));
+  }
+
   filter(func) {
+    // restrict to rows where `func()` is truthy
     function* output(argslist) {
       for (const [value, ...args] of argslist)
         if (func(value, ...args)) yield [value];
@@ -167,6 +185,7 @@ class ArrayWrapper {
   }
 
   limit(max) {
+    // restrict to rows with index < max
     function* output(argslist) {
       let i = 0;
 
@@ -224,6 +243,28 @@ class ArrayWrapper {
     return this.filter(func);
   }
 
+  chunk(size) {
+    // return rows containing arrays of length `size`
+    function* output(argslist) {
+      let count = 0;
+      let acc = [];
+
+      for (const [value] of argslist) {
+        if (acc.length === size) {
+          yield [internalFrum(acc), count];
+          count += 1;
+          acc = [];
+        }
+
+        acc.push(value);
+      }
+
+      if (acc.length > 0) yield [internalFrum(acc), count];
+    }
+
+    return new ArrayWrapper(() => output(this.argslist));
+  }
+
   flatten() {
     // assume this is an array of lists, return array of all elements
     // append extra index parameter to args
@@ -278,6 +319,30 @@ class ArrayWrapper {
     return new ArrayWrapper(function* outputGen() {
       for (const v of Object.values(output)) yield v;
     });
+  }
+
+  edges({ name = '.', edges }) {
+    const normalizedEdges = edges.map(Edge.newInstance);
+    const dims = normalizedEdges.map(e => e.domain.partitions.length);
+    const matrix = new Matrix({ dims });
+
+    this.forEach(row => {
+      const coord = normalizedEdges.map(e =>
+        e.domain.valueToIndex(e.value(row))
+      );
+
+      zip(dims, normalizedEdges).forEach(([d, e], i) => {
+        if (e.domain.type === 'value' && d < e.domain.partitions.length) {
+          // last element of value domain is NULL, ensure it is still last
+          matrix.insertPart(i, d - 1);
+          dims[i] = d + 1;
+        }
+      });
+
+      matrix.add(coord, row);
+    });
+
+    return new Cube({ name, matrix, edges: normalizedEdges });
   }
 
   sortBy(selectors) {
@@ -453,7 +518,7 @@ function leaves(obj) {
     for (const [val, key] of toPairs(map).argsGen()) {
       const path = concatField(prefix, literalField(key));
 
-      if (isObject(val)) {
+      if (isData(val)) {
         for (const pair of leafGen(val, path)) yield pair;
       } else {
         yield [val, path];
@@ -483,7 +548,6 @@ function extendWrapper(methods) {
 
 // Add Lodash functions
 extendWrapper({
-  chunk,
   unzip,
   zip: unzip,
 
