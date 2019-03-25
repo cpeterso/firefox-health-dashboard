@@ -4,7 +4,7 @@ import MG from 'metrics-graphics';
 const graph = specs => {
   const { target, data, legend, title, legendTarget, markers } = specs;
 
-  // for every series let's convert the values to proper dates
+  // For every series let's convert the values to proper dates
   data.map(evo => MG.convert.date(evo, 'date'));
   MG.data_graphic({
     title,

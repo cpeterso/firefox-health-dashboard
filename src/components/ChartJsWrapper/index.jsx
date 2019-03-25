@@ -55,8 +55,7 @@ const ChartJsWrapper = ({
       const latestDataDate = new Date(
         frum(dataset.data)
           .select('x')
-          .sort()
-          .last()
+          .max()
       );
       const currentDate = new Date(); // get current date
       const timeDifference = Math.abs(

@@ -3,7 +3,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable max-len */
 
-import { array, concatField } from '../utils';
+import { array, concatField, exists } from '../utils';
 import { toPairs } from '../queryOps';
 import { Log } from '../logs';
 import Matrix from './Matrix';
@@ -16,14 +16,21 @@ const subtract = (a, b) => a.filter(v => b.contains(v));
  * elements are accessed via Objects, called combinations
  */
 class Cube {
-  constructor({ name, matrix, edges }) {
-    this.name = name;
-    this.edges = edges;
-    this.values = Data(name, {
-      edges,
-      matrix,
-      map: array(edges.length).map((_, i) => i), // map this.edge index to matrix dimension
-    });
+  constructor({ name='.', matrix, edges }) {
+    if (exists(value)){
+      this.values = values;
+    }else{
+      this.name = name;
+      this.edges = edges;
+      this.values = Data(name, {
+        edges,
+        matrix,
+        map: array(edges.length).map((_, i) => i), // map this.edge index to matrix dimension
+      });
+
+    }
+
+
   }
 
   get(combo) {
@@ -61,9 +68,10 @@ class Cube {
 
   /*
    * return a generator over all parts of all edges
-   * while submitting named values, properly `sorted`
+   * it is expected `sort` has the rest of the edges
+   * generator returns [coord, cube] pairs
    */
-  sequence(edges) {
+  sequence(edges, sort) {
     const masterMap = edges.map(e =>
       this.edges.findIndex(f => f.name === e.name)
     );
@@ -74,15 +82,15 @@ class Cube {
       if (edges.length === 0) {
         const output = parts;
 
-        Object.entries(self.values).forEach(([name, { matrix, map }]) => {
+        toPairs(self.values).forEach(({ matrix, map }, name) => {
           const selfCoord = array(matrix.dims.length);
 
           coord.forEach((c, i) => {
             selfCoord[map[i]] = c;
           });
-          Data.set(output, name, matrix.get(selfCoord));
+          output[name] = matrix.get(selfCoord);
         });
-        yield [coord.slice(), output];
+        yield [coord.slice(), new Cube({edges: sort, values: {edges: , map: ,  matrix: output}})];
 
         return;
       }
@@ -96,7 +104,7 @@ class Cube {
 
         for (const s of _sequence(depth + 1, rest, {
           ...parts,
-          ...Data(first.name, p.value),
+          ...Data(first.name, Matrix({dims: [], data: p.value})),
         }))
           yield s;
         i += 1;

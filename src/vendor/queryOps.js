@@ -15,7 +15,7 @@ import {
   isFunction,
   zip,
 } from './utils';
-import { sum } from './math';
+import { sum, min, max } from './math';
 import { Log } from './logs';
 import Data from './Data';
 import { jx } from './jx/expressions';
@@ -409,6 +409,14 @@ class ArrayWrapper {
 
   sum() {
     return sum(this);
+  }
+
+  max() {
+    return max(this);
+  }
+
+  min() {
+    return min(this);
   }
 
   some(func) {

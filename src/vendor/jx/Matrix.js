@@ -26,7 +26,7 @@ elements are accessed via integer arrays, called coordinates.
 class Matrix {
   constructor({ dims, data = null, zero = array }) {
     this.dims = dims;
-    this.data = data || newMultiArray(dims, zero);
+    this.data = missing(data) ? data : newMultiArray(dims, zero);
     this.zero = zero;
   }
 
@@ -53,15 +53,10 @@ class Matrix {
         return data.map(sub => _iter(coord.slice(1), sub));
       }
 
-      const sub = data[c];
-
-      return _iter(coord.slice(1), sub);
+      return _iter(coord.slice(1), data[c]);
     }
 
     const newDims = this.dims.filter((c, i) => missing(coord[i]));
-
-    if (newDims.length === 0) return _iter(coord, this.data);
-
     return new Matrix({ dims: newDims, data: _iter(coord, this.data) });
   }
 
