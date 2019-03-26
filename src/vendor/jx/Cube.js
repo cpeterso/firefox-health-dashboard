@@ -3,94 +3,153 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable max-len */
 
-import { array, concatField, exists } from '../utils';
-import { toPairs } from '../queryOps';
+import {
+  missing,
+  array,
+  exists,
+  first,
+  isString,
+  toArray,
+  concatField,
+} from '../utils';
+import { frum, toPairs } from '../queryOps';
 import { Log } from '../logs';
 import Matrix from './Matrix';
 import Data from '../Data';
 
-const subtract = (a, b) => a.filter(v => b.contains(v));
+const subtractEdges = (a, b) => a.filter(v => b.every(w => w.name !== v.name));
 
 /*
- * multiple named matrices of values, deferenced by edge name
+ * multiple named matrices, deferenced by edge name
  * elements are accessed via Objects, called combinations
  */
 class Cube {
-  constructor({ name='.', matrix, edges }) {
-    if (exists(value)){
-      this.values = values;
-    }else{
-      this.name = name;
-      this.edges = edges;
-      this.values = Data(name, {
-        edges,
-        matrix,
-        map: array(edges.length).map((_, i) => i), // map this.edge index to matrix dimension
-      });
-
-    }
-
-
+  constructor(values = {}) {
+    this.values = values;
   }
 
-  get(combo) {
-    // find coordinates of the combo
-    Log.error('incomplete');
-
-    return [this.name, combo];
-  }
-
-  leftJoin({ name, edges, rightCube }) {
-    const requestedEdges = edges;
-    const mapToRight = this.edges.map(e =>
-      rightCube.edges.findIndex(f => f.name === e.name)
-    );
-
-    toPairs(rightCube.values).forEach(({ edges, matrix, map }, n) => {
-      const newMap = mapToRight.map(i => map[i]);
-
-      this.values[concatField(name, n)] = { edges, matrix, map: newMap };
-
-      const extra = subtract(requestedEdges, edges.select('name'));
-
-      if (extra.length > 0)
-        Log.error('can not find {{extra}} in {{name}}', { extra, name: n });
-    });
-
-    // check that the edges provided make some sense
-    toPairs(this.values).forEach(({ e }, n) => {
-      const extra = subtract(edges, e.select('name'));
-
-      if (extra.length > 0)
-        Log.error('can not find {{extra}} in {{name}}', { extra, name: n });
-    });
+  getValue(fieldName) {
+    return this.values[fieldName].matrix.value;
   }
 
   /*
-   * return a generator over all parts of all edges
-   * it is expected `sort` has the rest of the edges
+   * Add a named matrix to this cube
+   */
+  leftJoin({ name, edges, matrix }) {
+    // VERIFY EDGES ARE IDENTICAL
+    let different = false;
+    const [newEdges, ordering, dims] = frum(edges)
+      .map(foreignEdge => {
+        const foreignParts = foreignEdge.domain.partitions;
+        const selfEdge = this._getEdgesByName([foreignEdge.name])[0];
+
+        if (missing(selfEdge))
+          return [
+            foreignEdge,
+            foreignParts.map((v, i) => i),
+            foreignParts.length,
+          ];
+        const selfParts = selfEdge.domain.partitions;
+        // MAP foreignEdge PARTS TO selfEdge parts
+        const valToIndex = frum(selfParts)
+          .enumerate()
+          .map((p, i) => [i, p.value])
+          .args()
+          .fromPairs();
+        const newPart = frum(foreignParts)
+          .select('value')
+          .filter(p => missing(valToIndex[p]))
+          .toArray();
+        const mapping = foreignParts.map(p => valToIndex[p.value]);
+
+        if (newPart.length > 0) {
+          different = true;
+          Log.warning(
+            'right edge {{name|quote}} has more parts ({{newPart|json}}) than the left',
+            {
+              newPart,
+              name: foreignEdge.name,
+            }
+          );
+        }
+
+        if (mapping.some((v, i) => v !== i)) {
+          different = true;
+        }
+
+        return [selfEdge, mapping, selfParts.length];
+      })
+      .zip()
+      .toArray();
+
+    if (different) {
+      this.values[name] = {
+        edges: newEdges,
+        matrix: matrix.reorder(dims, ordering),
+      };
+    } else {
+      this.values[name] = {
+        edges: newEdges,
+        matrix,
+      };
+    }
+
+    return this;
+  }
+
+  /*
+   * Add other cube to this one
+   */
+  extend({ cube, name = '.' }) {
+    toPairs(cube.values).forEach(({ edges, matrix }, n) => {
+      this.leftJoin({ name: concatField(name, n), edges, matrix });
+    });
+
+    return this;
+  }
+
+  /*
+   * return a generator over all parts of all given edges
    * generator returns [coord, cube] pairs
    */
-  sequence(edges, sort) {
-    const masterMap = edges.map(e =>
-      this.edges.findIndex(f => f.name === e.name)
-    );
-    const coord = array(this.edges.length);
+  sequence(requestedEdges) {
+    if (requestedEdges.some(isString))
+      Log.error('sequence() requires edge objects');
+
     const self = this;
+    // MAP FROM name TO (requested dimension TO matrix dimension)
+    const maps = toPairs(self.values)
+      .map(({ edges }) =>
+        requestedEdges
+          .map(e => edges.findIndex(f => f.name === e.name))
+          .map(i => (i === -1 ? null : i))
+      )
+      .fromPairs();
+    // MAP FROM name TO NOT-REQUESTED EDGES
+    const residue = toPairs(self.values)
+      .map(({ edges }) => subtractEdges(edges, requestedEdges))
+      .fromPairs();
+    const coord = array(requestedEdges.length);
 
-    function* _sequence(depth, edges, parts) {
+    function* _sequence(depth, edges, result) {
       if (edges.length === 0) {
-        const output = parts;
+        const output = result;
 
-        toPairs(self.values).forEach(({ matrix, map }, name) => {
+        toPairs(self.values).forEach(({ matrix }, name) => {
           const selfCoord = array(matrix.dims.length);
+          const map = maps[name];
 
           coord.forEach((c, i) => {
-            selfCoord[map[i]] = c;
+            const d = map[i];
+
+            if (exists(d)) selfCoord[d] = c;
           });
-          output[name] = matrix.get(selfCoord);
+          output[name] = {
+            edges: residue[name],
+            matrix: matrix.get(selfCoord),
+          };
         });
-        yield [coord.slice(), new Cube({edges: sort, values: {edges: , map: ,  matrix: output}})];
+        yield [coord.slice(), new Cube(output)];
 
         return;
       }
@@ -100,11 +159,14 @@ class Cube {
       let i = 0;
 
       for (const p of first.domain.partitions) {
-        coord[masterMap[depth]] = i;
+        coord[depth] = i;
 
         for (const s of _sequence(depth + 1, rest, {
-          ...parts,
-          ...Data(first.name, Matrix({dims: [], data: p.value})),
+          ...result,
+          ...Data(first.name, {
+            edges: [],
+            matrix: new Matrix({ dims: [], data: p.value }),
+          }),
         }))
           yield s;
         i += 1;
@@ -112,43 +174,65 @@ class Cube {
     }
 
     // map from given edges to each name's edges
-    return _sequence(0, edges, {});
+    return _sequence(0, requestedEdges, {});
+  }
+
+  _getEdgesByName(edgeNames) {
+    // TODO: Verify the edges with same name have same partitions
+    return edgeNames
+      .map(eName =>
+        toPairs(this.values).map(({ edges: subEdges }) =>
+          subEdges.find(e => e.name === eName)
+        )
+      )
+      .map(first);
+  }
+
+  select(names) {
+    return new Cube(
+      Data.zip(toArray(names).map(name => [name, this.values[name]]))
+    );
   }
 
   /*
    * group by edges, then for each group
    * run name=value(element, coord, matrix) over all rows in group
    */
-  window({ name, value, edges, sort }) {
-    const outerEdges = edges.map(eName =>
-      this.edges.find(e => e.name === eName)
-    );
-    const innerEdges = sort.map(eName =>
-      this.edges.find(e => e.name === eName)
-    );
+  window({ name, value, edges: edgeNames, sort }) {
+    const sort_ = toArray(sort);
+
+    if (sort_.length > 1) Log.error('can only handle zero/one dimension');
+
+    const outerEdges = this._getEdgesByName(edgeNames);
+    const innerEdges = this._getEdgesByName(sort_);
+    const outerDims = outerEdges.map(e => e.domain.partitions.length);
+    const innerDims = innerEdges.map(e => e.domain.partitions.length);
     const outerMatrix = new Matrix({
-      dims: outerEdges.map(e => e.domain.partitions.length),
+      dims: outerDims,
       zero: () => null,
     });
 
-    if (sort.length === 0) {
-      // ZERO DIMENSION VALUE
-      for (const [outerCoord, outerRow] of this.sequence(outerEdges)) {
-        const v = value({ ...outerRow });
+    for (const [outerCoord, outerRow] of this.sequence(outerEdges)) {
+      // WE PEAL BACK ALL THE WRAPPING FOR THE value() FUNCTION TO OPERATE ON
+      if (sort_.length === 0) {
+        const v = value(
+          toPairs(outerRow.values)
+            .map(d => d.matrix.data)
+            .fromLeaves()
+        );
 
         outerMatrix.set(outerCoord, v);
-      }
-    } else if (sort.length === 1) {
-      // SINGLE DIMENSION MATRIX IS AN ARRAY
-      for (const [outerCoord, outerRow] of this.sequence(outerEdges)) {
+      } else {
         const innerMatrix = new Matrix({
-          dims: innerEdges.map(e => e.domain.partitions.length),
+          dims: innerDims,
           zero: () => null,
         });
 
-        for (const [innerCoord, innerRow] of outerRow.sequence(sort)) {
+        for (const [innerCoord, innerRow] of outerRow.sequence(innerEdges)) {
           const v = value(
-            { ...outerRow, ...innerRow },
+            toPairs(innerRow.values)
+              .map(d => d.matrix.data)
+              .fromLeaves(),
             innerCoord[0],
             innerMatrix.data
           );
@@ -156,34 +240,27 @@ class Cube {
           innerMatrix.set(innerCoord, v);
         }
 
-        outerMatrix.set(outerCoord, innerMatrix);
+        outerMatrix.set(outerCoord, innerMatrix.data);
       }
-    } else {
-      // MULTIDIMENSIONAL CASE
-      for (const [outerCoord, outerRow] of this.sequence(outerEdges)) {
-        const innerMatrix = new Matrix({
-          dims: innerEdges.map(e => e.domain.partitions.length),
-          zero: () => null,
-        });
-
-        for (const [innerCoord, innerRow] of outerRow.sequence(sort)) {
-          const v = value(
-            { ...outerRow, ...innerRow },
-            innerCoord,
-            innerMatrix
-          );
-
-          innerMatrix.set(innerCoord, v);
-        }
-
-        outerMatrix.set(outerCoord, innerMatrix);
-      }
+      // for (const [innerCoord, innerRow] of outerRow.sequence(innerEdges)) {
+      //   const v = value(
+      //     new Cube({ ...outerRow.values, ...innerRow.values }),
+      //     innerCoord,
+      //     innerMatrix
+      //   );
+      //
+      //   innerMatrix.set(innerCoord, v);
+      // }
+      // outerMatrix.set(outerCoord, innerMatrix.data);
     }
 
-    this.leftJoin({
+    return this.leftJoin({
       name,
-      edges,
-      rightCube: new Cube({ matrix: outerMatrix, edges_: outerEdges }),
+      edges: outerEdges.concat(innerEdges),
+      matrix: new Matrix({
+        dims: outerDims.concat(innerDims),
+        data: outerMatrix.data,
+      }),
     });
   }
 }

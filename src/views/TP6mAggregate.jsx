@@ -9,8 +9,8 @@ import { getData } from '../vendor/perfherder';
 import generateOptions from '../utils/chartJs/generateOptions';
 import { withErrorBoundary } from '../vendor/errors';
 import { jx } from '../vendor/jx/expressions';
-import { average } from '../vendor/math';
-import { reference } from '../config/mobileG5';
+import { g5Reference } from '../config/mobileG5';
+import { Log } from '../vendor/logs';
 
 class TP6mAggregate extends Component {
   constructor(props) {
@@ -23,12 +23,6 @@ class TP6mAggregate extends Component {
     const pages = frum(TP6M_PAGES);
     // WHAT ARE THE SIGNATURES OF THE loadtime?
     const tests = frum(TP6_TESTS).select('id');
-    const g5Reference = reference
-      .map(row => tests.map(test => ({ test, value: row[test], ...row })))
-      .flatten()
-      .edges({
-        edges: ['test', 'suite', 'platform'],
-      });
     const data = await getData(pages.select('framework'), {
       and: [
         { eq: { platform: 'android-hw-g5-7-0-arm7-api-16' } },
@@ -68,52 +62,49 @@ class TP6mAggregate extends Component {
       edges: ['test', 'suite', 'platform'],
       sort: ['pushDate'],
       value: (value, c, values) => {
-        if (c > 0 && value.measured.length === 0) return values.daily[c - 1];
+        const { measured } = value;
 
-        return average(value);
+        if (c > 0 && measured.length === 0) return values[c - 1];
+
+        return frum(measured)
+          .select('value')
+          .average();
       },
     });
-    const addRef = fillHoles.leftJoin({
-      name: 'reference',
-      edges: ['test', 'suite', 'platform'],
-      value: g5Reference,
-    });
-    const final = addRef.window({
-      name: 'result',
-      edges: ['test', 'pushDate'],
-      value: row => ({
-        average: row.daily.average() / row.reference.value,
-        reference: row.reference.value,
-      }),
-    });
+    const addRef = fillHoles.extend({name: 'reference', cube: g5Reference});
+    const final = addRef
+      .window({
+        name: 'result',
+        edges: ['platform', 'test', 'pushDate'],
+        value: row => {
+          try {
+            const suites = row.daily;
+            const ref = row.reference.value;
 
-    // DAILY AGGREGATE
+            if (ref.length !== suites.length) {
+              Log.error('not expected');
+            }
 
-    // FOR EACH TEST
-    // SET NORMALIZATION CONSTANTS
-    // const minDate = Date.today().addMonths(-3);
+            const result = frum(suites, ref)
+              .map((s, r) => {
+                if (r === 0) {
+                  Log.warning('not expected');
+                }
 
-    frum(data)
-      .filter(jx({ gte: { datetime: { date: 'today-3month' } } }))
-      .edges([
-        'test',
-        {
-          name: 'timestamp',
-          value: 'push_timestamp',
-          domain: {
-            type: 'time',
-            min: 'today-3month',
-            max: 'today',
-            interval: 'day',
-          },
+                return s / r;
+              })
+              .average();
+
+            return result;
+          } catch (error) {
+            return null;
+          }
         },
-      ])
-      .select('value')
-      .aggregate('average');
+      })
+      .select("result");
 
-    frum(TP6_TESTS);
-
-    this.setState({ data });
+    // SET NORMALIZATION CONSTANTS
+    this.setState({ data: final.select('result') });
   }
 
   render() {

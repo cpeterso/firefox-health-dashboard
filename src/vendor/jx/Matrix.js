@@ -3,11 +3,12 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable max-len */
 
-import { array, missing } from '../utils';
+import { array, missing, exists } from '../utils';
+import { Log } from '../logs';
 
 /*
 return an array of arrays
-size - an array of integers; number of part along each dimension
+dims - an array of integers; number of part along each dimension
 zero - a function the will be used to create an element in the multiarray
  */
 function newMultiArray(dims, zero) {
@@ -24,9 +25,9 @@ A multidimensional array
 elements are accessed via integer arrays, called coordinates.
  */
 class Matrix {
-  constructor({ dims, data = null, zero = array }) {
+  constructor({ dims, data, zero = array }) {
     this.dims = dims;
-    this.data = missing(data) ? data : newMultiArray(dims, zero);
+    this.data = data !== undefined ? data : newMultiArray(dims, zero);
     this.zero = zero;
   }
 
@@ -34,9 +35,13 @@ class Matrix {
   assume elements are arrays, add value to that element
    */
   add(coord, value) {
-    const rows = this.get(coord);
+    const rows = this.get(coord).value;
 
-    rows.push(value);
+    if (this.zero === array) {
+      rows.push(value);
+    } else if (exists(rows)) {
+      Log.error('duplicate value at {{coord}}', { coord });
+    }
   }
 
   /*
@@ -57,6 +62,7 @@ class Matrix {
     }
 
     const newDims = this.dims.filter((c, i) => missing(coord[i]));
+
     return new Matrix({ dims: newDims, data: _iter(coord, this.data) });
   }
 
@@ -80,6 +86,12 @@ class Matrix {
     return _iter(coord, this.data);
   }
 
+  get value() {
+    if (this.dims.length > 0) Log.error('this matrix still has dimension');
+
+    return this.data;
+  }
+
   /*
   insert a new port along a single edge, expanding the cube
   and inserting zero()s everywhere.
@@ -98,6 +110,21 @@ class Matrix {
     };
 
     _insert(dimension, this.data);
+  }
+
+  /*
+  Emit new matrix with each coordinate reordered
+   */
+  reorder(dims, ordering) {
+    const output = new Matrix({ dims, zero: () => null });
+
+    for (const [v, coord] of this) {
+      const n = coord.map((c, i) => ordering[i][c]);
+
+      if (n.every(n => exists(n))) output.set(n, v);
+    }
+
+    return output;
   }
 
   /*

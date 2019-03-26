@@ -14,8 +14,9 @@ import {
   toArray,
   isFunction,
   zip,
+  array,
 } from './utils';
-import { sum, min, max } from './math';
+import { sum, min, max, average } from './math';
 import { Log } from './logs';
 import Data from './Data';
 import { jx } from './jx/expressions';
@@ -321,10 +322,10 @@ class ArrayWrapper {
     });
   }
 
-  edges({ name = '.', edges }) {
+  edges({ name = '.', edges, zero = array }) {
     const normalizedEdges = edges.map(Edge.newInstance);
     const dims = normalizedEdges.map(e => e.domain.partitions.length);
-    const matrix = new Matrix({ dims });
+    const matrix = new Matrix({ dims, zero });
 
     this.forEach(row => {
       const coord = normalizedEdges.map(e =>
@@ -342,7 +343,7 @@ class ArrayWrapper {
       matrix.add(coord, row);
     });
 
-    return new Cube({ name, matrix, edges: normalizedEdges });
+    return new Cube().leftJoin({ name, matrix, edges: normalizedEdges });
   }
 
   sortBy(selectors) {
@@ -409,6 +410,10 @@ class ArrayWrapper {
 
   sum() {
     return sum(this);
+  }
+
+  average() {
+    return average(this);
   }
 
   max() {
@@ -482,9 +487,20 @@ class ArrayWrapper {
   }
 }
 
-function frum(list) {
+function frum(list, ...more) {
   if (list instanceof ArrayWrapper) {
     return list;
+  }
+
+  if (more.length) {
+    return new ArrayWrapper(function* outputGen() {
+      let i = 0;
+
+      for (const v of list) {
+        yield [v, ...more.map(m => m[i])];
+        i += 1;
+      }
+    });
   }
 
   return new ArrayWrapper(function* outputGen() {

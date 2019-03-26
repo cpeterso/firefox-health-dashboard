@@ -4,6 +4,8 @@
 
 import Data from "../vendor/Data";
 import { frum } from "../vendor/queryOps";
+import { missing } from "../vendor/utils";
+import { Log } from "../vendor/logs";
 
 const platform = 'android-hw-g5-7-0-arm7-api-16';
 
@@ -41,6 +43,35 @@ const fennec64 =
     ]
   };
 
-const reference = frum(fennec64.data).map(row=> ({platform, ...Data.zip(fennec64.header, row)}));
+const g5Reference = frum(fennec64.data)
+  .map(row=> ({platform, ...Data.zip(fennec64.header, row)}))
+  .map(row => tests.map(test => ({ test, value: row[test], ...row })))
+  .flatten()
+  .edges({
+    name: 'raw',
+    edges: ['test', 'suite', 'platform'],
+  })
+  .window({
+    name: 'value',
+    edges: ['test', 'suite', 'platform'],
+    value: v => {
+      const { test, suite, platform } = v;
 
-export { reference };
+      if ([test, suite, platform].some(missing)) return null;
+
+      if (v.raw.length > 1) {
+        Log.error('expecting only one value for {{combo}}', {
+          test,
+          suite,
+          platform,
+        });
+      }
+
+      return v.raw[0].value;
+    },
+  })
+  .select("value");
+
+
+
+export { g5Reference };
