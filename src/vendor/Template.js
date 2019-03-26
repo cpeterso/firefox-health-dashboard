@@ -137,12 +137,7 @@ function expand(template, parameters) {
       return v;
     }
 
-    if (
-      typeof v === 'object' &&
-      !(v instanceof Array) &&
-      !(v instanceof Date)
-      // !(v instanceof Duration)
-    ) {
+    if (isData(v)) {
       return toPairs(v)
         .map((v, k) => [lower(v), k.toLowerCase()])
         .args()

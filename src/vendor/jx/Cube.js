@@ -4,16 +4,16 @@
 /* eslint-disable max-len */
 
 import {
-  missing,
   array,
-  exists,
-  first,
-  isString,
-  toArray,
   concatField,
+  exists,
+  isString,
+  missing,
+  toArray,
 } from '../utils';
-import { frum, toPairs } from '../queryOps';
+import { ArrayWrapper, frum, toPairs } from '../queryOps';
 import { Log } from '../logs';
+import { NULL } from './domains';
 import Matrix from './Matrix';
 import Data from '../Data';
 
@@ -26,10 +26,52 @@ const subtractEdges = (a, b) => a.filter(v => b.every(w => w.name !== v.name));
 class Cube {
   constructor(values = {}) {
     this.values = values;
+
+    // toPairs(values).forEach((_, edgeName)=>{
+    //   Object.defineProperty(this, edgeName, {
+    //     get: () => {
+    //       return this.getValue(edgeName)
+    //     },
+    //   });
+    // })
   }
 
   getValue(fieldName) {
     return this.values[fieldName].matrix.value;
+  }
+
+  /*
+   * Expecting combination object with {edge: value} pairs
+   * return a (reduced dimension) cube
+   */
+  get(combination) {
+    const selections = toPairs(combination)
+      .map((value, edgeName) =>
+        this._getEdgeByName(edgeName).domain.partitions.findIndex(
+          p => p.value === value
+        )
+      )
+      .fromPairs();
+    const values = toPairs(this.values)
+      .map(({ edges, matrix }) => ({
+        edges: edges.filter(e => missing(combination[e.name])),
+        matrix: matrix.get(edges.map(e => selections[e.name])),
+      }))
+      .fromPairs();
+
+    return new Cube(values);
+  }
+
+  /*
+   * pick one edge which you can perform more chained vector operations
+   * value is a cube
+   */
+  along(edge, options = {}) {
+    const { nulls = false } = options;
+
+    return new ArrayWrapper(() =>
+      this.sequence([this._getEdgeByName(edge)], { nulls })
+    );
   }
 
   /*
@@ -41,7 +83,7 @@ class Cube {
     const [newEdges, ordering, dims] = frum(edges)
       .map(foreignEdge => {
         const foreignParts = foreignEdge.domain.partitions;
-        const selfEdge = this._getEdgesByName([foreignEdge.name])[0];
+        const selfEdge = this._getEdgeByName(foreignEdge.name);
 
         if (missing(selfEdge))
           return [
@@ -112,7 +154,9 @@ class Cube {
    * return a generator over all parts of all given edges
    * generator returns [coord, cube] pairs
    */
-  sequence(requestedEdges) {
+  sequence(requestedEdges, options = {}) {
+    const { nulls = true } = options;
+
     if (requestedEdges.some(isString))
       Log.error('sequence() requires edge objects');
 
@@ -149,7 +193,7 @@ class Cube {
             matrix: matrix.get(selfCoord),
           };
         });
-        yield [coord.slice(), new Cube(output)];
+        yield [new Cube(output), coord.slice()];
 
         return;
       }
@@ -159,6 +203,8 @@ class Cube {
       let i = 0;
 
       for (const p of first.domain.partitions) {
+        // eslint-disable-next-line no-continue
+        if (!nulls && p === NULL) continue;
         coord[depth] = i;
 
         for (const s of _sequence(depth + 1, rest, {
@@ -177,15 +223,11 @@ class Cube {
     return _sequence(0, requestedEdges, {});
   }
 
-  _getEdgesByName(edgeNames) {
-    // TODO: Verify the edges with same name have same partitions
-    return edgeNames
-      .map(eName =>
-        toPairs(this.values).map(({ edges: subEdges }) =>
-          subEdges.find(e => e.name === eName)
-        )
-      )
-      .map(first);
+  _getEdgeByName(edgeName) {
+    return toPairs(this.values)
+      .map(({ edges }) => edges.find(e => e.name === edgeName))
+      .exists()
+      .first();
   }
 
   select(names) {
@@ -203,8 +245,8 @@ class Cube {
 
     if (sort_.length > 1) Log.error('can only handle zero/one dimension');
 
-    const outerEdges = this._getEdgesByName(edgeNames);
-    const innerEdges = this._getEdgesByName(sort_);
+    const outerEdges = edgeNames.map(n => this._getEdgeByName(n));
+    const innerEdges = sort_.map(n => this._getEdgeByName(n));
     const outerDims = outerEdges.map(e => e.domain.partitions.length);
     const innerDims = innerEdges.map(e => e.domain.partitions.length);
     const outerMatrix = new Matrix({
@@ -212,7 +254,7 @@ class Cube {
       zero: () => null,
     });
 
-    for (const [outerCoord, outerRow] of this.sequence(outerEdges)) {
+    for (const [outerRow, outerCoord] of this.sequence(outerEdges)) {
       // WE PEAL BACK ALL THE WRAPPING FOR THE value() FUNCTION TO OPERATE ON
       if (sort_.length === 0) {
         const v = value(
@@ -228,7 +270,7 @@ class Cube {
           zero: () => null,
         });
 
-        for (const [innerCoord, innerRow] of outerRow.sequence(innerEdges)) {
+        for (const [innerRow, innerCoord] of outerRow.sequence(innerEdges)) {
           const v = value(
             toPairs(innerRow.values)
               .map(d => d.matrix.data)

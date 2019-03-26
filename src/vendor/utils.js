@@ -81,15 +81,13 @@ function isInteger(n) {
   return Number.isInteger(n);
 }
 
+const OBJECT_CONSTRUCTOR = {}.constructor;
+
 /*
  * objects that are best serialized as JSON objects
  */
 function isData(val) {
-  if (missing(val) || isArray(val) || val instanceof ArrayWrapper) {
-    return false;
-  }
-
-  return typeof val === 'object';
+  return val.constructor === OBJECT_CONSTRUCTOR;
 }
 
 function isFunction(f) {

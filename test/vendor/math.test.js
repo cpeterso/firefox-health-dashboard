@@ -10,6 +10,7 @@ import {
   round,
   roundMetric,
   sum,
+  div,
 } from '../../src/vendor/math';
 import { frum } from '../../src/vendor/queryOps';
 
@@ -155,5 +156,16 @@ describe('math', () => {
     expect(roundMetric(Math.PI * 0.000001, { digits: 3 })).toBe('3.14µ');
     expect(roundMetric(Math.PI * 0.0000001, { digits: 3 })).toBe('314n');
     expect(roundMetric(Math.PI * 0.00000001, { digits: 3 })).toBe('31.4n');
+  });
+
+  it('broken js: division', () => {
+    expect(null / 1).toBe(0); // NOT EXPECTED
+  });
+
+  it('division', () => {
+    expect(div(null, 1)).toBe(null);
+    expect(div(0, 0)).toBe(null);
+    expect(div(1, 0)).toBe(null);
+    expect(div(null, 0)).toBe(null);
   });
 });

@@ -1,11 +1,15 @@
 /* global describe, it */
 import {
+  array,
+  isData,
   isInteger,
   isNumeric,
   literalField,
   splitField,
-  array,
 } from '../../src/vendor/utils';
+import { frum } from '../../src/vendor/queryOps';
+import GMTDate from '../../src/vendor/dates';
+import { Duration } from '../../src/vendor/durations';
 
 describe('utils', () => {
   it('isInteger', () => {
@@ -69,5 +73,17 @@ describe('utils', () => {
 
   it('fixed array', () => {
     expect(array(6).map(() => 1)[2]).toEqual(1);
+  });
+
+  it('isData', () => {
+    expect(isData([])).toBe(false);
+    expect(isData(frum([]))).toBe(false);
+    expect(isData(() => 0)).toBe(false);
+    expect(GMTDate().now()).toBe(false);
+    expect(isData(new Duration())).toBe(false);
+    expect(isData('')).toBe(false);
+    expect(isData('test')).toBe(false);
+    expect(isData(undefined)).toBe(false);
+    expect(isData(null)).toBe(false);
   });
 });

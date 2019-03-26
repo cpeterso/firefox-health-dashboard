@@ -1,7 +1,7 @@
-import dateFormat from 'dateformat';
 import { coalesce, isString } from './utils';
 import { value2json } from './convert';
 import { round as mathRound, roundMetric } from './math';
+import Date from './dates';
 
 const between = (v, min, max) => Math.max(min, Math.min(max, v));
 const strings = {
@@ -67,10 +67,9 @@ const strings = {
   },
 
   format(value, format) {
-    // see https://www.npmjs.com/package/dateformat
-    const ff = coalesce(format, 'UTC:yyyy-mm-dd HH:MM:ss');
+    const ff = coalesce(format, 'yyyy-MM-dd HH:mm:ss');
 
-    return dateFormat(new Date(value) * 1000, ff);
+    return Date.newInstance(value).format(ff);
   },
 
   unix(value) {

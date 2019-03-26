@@ -6,6 +6,7 @@ import Data from "../vendor/Data";
 import { frum } from "../vendor/queryOps";
 import { missing } from "../vendor/utils";
 import { Log } from "../vendor/logs";
+import { TP6_TESTS } from "../quantum/config";
 
 const platform = 'android-hw-g5-7-0-arm7-api-16';
 
@@ -42,6 +43,8 @@ const fennec64 =
       [ 1307.48, 4326.50,  717.42,    null,  760.50,  955.50, 1271.75,  929.00, "raptor-tp6m-web-de-geckoview",            "https://web.de/magazine/politik/politologe-glaubt-grossen-koalition-herbst-knallen-33563566"],
     ]
   };
+
+const tests = frum(TP6_TESTS).select('id');
 
 const g5Reference = frum(fennec64.data)
   .map(row=> ({platform, ...Data.zip(fennec64.header, row)}))

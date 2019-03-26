@@ -26,6 +26,7 @@ import Cube from './jx/Cube';
 
 let internalFrum = null;
 let internalToPairs = null;
+const getI = i => m => m[i];
 
 function preSelector(columnName) {
   // Return an array of [selector(), name] pairs
@@ -497,7 +498,7 @@ function frum(list, ...more) {
       let i = 0;
 
       for (const v of list) {
-        yield [v, ...more.map(m => m[i])];
+        yield [v, ...more.map(getI(i))];
         i += 1;
       }
     });

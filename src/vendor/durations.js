@@ -3,7 +3,7 @@
 /* eslint-disable no-underscore-dangle */
 
 import { coalesce, exists, isNumeric, isString, missing } from './utils';
-import { abs, floor, min, round } from './math';
+import { abs, floor, min } from './math';
 import Date from './dates';
 import { Log } from './logs';
 import strings from './strings';
@@ -14,33 +14,41 @@ class Duration {
     this.month = 0;
   }
 
-  add = duration => {
+  add(duration) {
     const output = new Duration();
 
     output.milli = this.milli + duration.milli;
     output.month = this.month + duration.month;
 
     return output;
-  };
+  }
 
-  addDay = numDay => this.add(Duration.DAY.multiply(numDay));
+  addDay(numDay) {
+    return this.add(Duration.DAY.multiply(numDay));
+  }
 
-  lt = val => this.milli < val.milli;
+  lt(val) {
+    return this.milli < val.milli;
+  }
 
-  lte = val => this.milli <= val.milli;
+  lte(val) {
+    return this.milli <= val.milli;
+  }
 
-  seconds = () => this.milli / 1000.0;
+  seconds() {
+    return this.milli / 1000.0;
+  }
 
-  multiply = amount => {
+  multiply(amount) {
     const output = new Duration();
 
     output.milli = this.milli * amount;
     output.month = this.month * amount;
 
     return output;
-  };
+  }
 
-  divideBy = amount => {
+  divideBy(amount) {
     if (amount.month !== undefined && amount.month !== 0) {
       let m = this.month;
       let r = this.milli;
@@ -76,18 +84,18 @@ class Duration {
     }
 
     return this.milli / amount.milli;
-  };
+  }
 
-  subtract = duration => {
+  subtract(duration) {
     const output = new Duration();
 
     output.milli = this.milli - duration.milli;
     output.month = this.month - duration.month;
 
     return output;
-  };
+  }
 
-  floor = interval => {
+  floor(interval) {
     if (interval === undefined || interval.milli === undefined)
       Log.error('Expecting an interval as a Duration object');
     const output = new Duration();
@@ -119,14 +127,16 @@ class Duration {
     }
 
     return output;
-  };
+  }
 
-  mod = interval => this.subtract(this.floor(interval));
+  mod(interval) {
+    return this.subtract(this.floor(interval));
+  }
 
-  toString = r => {
+  toString(rounding) {
     if (this.milli === 0) return 'zero';
 
-    let round = coalesce(r, 'milli');
+    let round = coalesce(rounding, 'milli');
     let rem;
     let output = '';
     let rest = this.milli - Duration.MILLI_VALUES.month * this.month; // DO NOT INCLUDE THE MONTH'S MILLIS
@@ -145,7 +155,7 @@ class Duration {
     }
 
     if (round === 'second') {
-      rem = round(rest) % 60;
+      rem = Math.round(rest) % 60;
 
       if (rem !== 0) output = `+${rem}second${output}`;
       rest = floor(rest / 60);
@@ -155,7 +165,7 @@ class Duration {
     }
 
     if (round === 'minute') {
-      rem = round(rest) % 60;
+      rem = Math.round(rest) % 60;
 
       if (rem !== 0) output = `+${rem}minute${output}`;
       rest = floor(rest / 60);
@@ -166,7 +176,7 @@ class Duration {
 
     // HOUR
     if (round === 'hour') {
-      rem = round(rest) % 24;
+      rem = Math.round(rest) % 24;
 
       if (rem !== 0) output = `+${rem}hour${output}`;
       rest = floor(rest / 24);
@@ -193,7 +203,7 @@ class Duration {
 
     // WEEK
     if (round === 'week') {
-      rest = round(rest);
+      rest = Math.round(rest);
 
       if (rest !== 0) output = `+${rest}week${output}`;
     }
@@ -223,18 +233,20 @@ class Duration {
       output = strings.rightBut(output, 1);
 
     return output;
-  };
+  }
 
-  format = _format => new Date(this.milli).format(_format);
+  format(_format) {
+    return new Date(this.milli).format(_format);
+  }
 
-  round = (interval, rounding) => {
+  round(interval, rounding) {
     const rounding_ = coalesce(rounding, 0);
     let output = this.divideBy(interval);
 
-    output = round(output, rounding_);
+    output = Math.round(output, rounding_);
 
     return output;
-  };
+  }
 }
 
 Duration.DOMAIN = {

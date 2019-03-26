@@ -41,7 +41,7 @@ class GMTDate extends Date {
   };
 
   add = interval => {
-    if (interval === undefined || interval === null) {
+    if (missing(interval)) {
       Log.error('expecting an interval to add');
     }
 
@@ -51,25 +51,13 @@ class GMTDate extends Date {
     return this.addMonth(i.month).addMilli(addMilli);
   };
 
-  subtract = (time, interval) => {
-    if (typeof time === 'string')
+  subtract = time => {
+    if (isString(time))
       Log.error(
         'expecting to subtract a Duration or GMTDate object, not a string'
       );
 
-    if (interval === undefined || interval.month === 0) {
-      if (time.getMilli) {
-        // SUBTRACT TIME
-        return Duration.newInstance(this.milli() - time.milli());
-      }
-
-      // SUBTRACT DURATION
-      const residue = time.milli - Duration.MILLI_VALUES.month * time.month;
-
-      return this.addMonth(-time.month).addMilli(-residue);
-    }
-
-    if (time.getMilli) {
+    if (time instanceof GMTDate) {
       // SUBTRACT TIME
       return GMTDate.diffMonth(this, time);
     }

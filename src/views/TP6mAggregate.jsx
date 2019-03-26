@@ -1,8 +1,8 @@
 /* eslint-disable linebreak-style */
 import React, { Component } from 'react';
-import Chart from 'react-chartjs-2';
 import { frum } from '../vendor/queryOps';
 import { missing } from '../vendor/utils';
+import { div } from '../vendor/math';
 import { withNavigation } from '../vendor/utils/navigation';
 import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
@@ -10,7 +10,8 @@ import generateOptions from '../utils/chartJs/generateOptions';
 import { withErrorBoundary } from '../vendor/errors';
 import { jx } from '../vendor/jx/expressions';
 import { g5Reference } from '../config/mobileG5';
-import { Log } from '../vendor/logs';
+import ChartJSWrapper from '../components/ChartJsWrapper';
+import timer from '../vendor/timer';
 
 class TP6mAggregate extends Component {
   constructor(props) {
@@ -23,6 +24,7 @@ class TP6mAggregate extends Component {
     const pages = frum(TP6M_PAGES);
     // WHAT ARE THE SIGNATURES OF THE loadtime?
     const tests = frum(TP6_TESTS).select('id');
+    const readData = timer('read data');
     const data = await getData(pages.select('framework'), {
       and: [
         { eq: { platform: 'android-hw-g5-7-0-arm7-api-16' } },
@@ -35,6 +37,10 @@ class TP6mAggregate extends Component {
         },
       ],
     });
+
+    readData.done();
+
+    const processData = timer('process data');
     const recent = data.filter(
       jx({ gte: { push_timestamp: { date: 'today-3month' } } })
     );
@@ -71,40 +77,19 @@ class TP6mAggregate extends Component {
           .average();
       },
     });
-    const addRef = fillHoles.extend({name: 'reference', cube: g5Reference});
-    const final = addRef
-      .window({
-        name: 'result',
-        edges: ['platform', 'test', 'pushDate'],
-        value: row => {
-          try {
-            const suites = row.daily;
-            const ref = row.reference.value;
-
-            if (ref.length !== suites.length) {
-              Log.error('not expected');
-            }
-
-            const result = frum(suites, ref)
-              .map((s, r) => {
-                if (r === 0) {
-                  Log.warning('not expected');
-                }
-
-                return s / r;
-              })
-              .average();
-
-            return result;
-          } catch (error) {
-            return null;
-          }
-        },
-      })
-      .select("result");
+    const addRef = fillHoles.extend({ name: 'reference', cube: g5Reference });
+    const final = addRef.window({
+      name: 'result',
+      edges: ['test', 'platform', 'pushDate'],
+      value: row =>
+        frum(row.daily, row.reference.value)
+          .map(div)
+          .average(),
+    });
 
     // SET NORMALIZATION CONSTANTS
     this.setState({ data: final.select('result') });
+    processData.done();
   }
 
   render() {
@@ -112,15 +97,36 @@ class TP6mAggregate extends Component {
 
     if (missing(data)) return null;
 
-    return frum(TP6_TESTS).map(({ label }) => (
-      <Chart
-        key={label}
-        type="line"
-        data={data}
-        height="200"
-        options={generateOptions()}
-      />
-    ));
+    return frum(TP6_TESTS).map(({ label, id }) => {
+      const chartData = {
+        datasets: data
+          .get({ test: id })
+          .along('platform')
+          .map(row => ({
+            label: row.getValue('platform'),
+            type: 'line',
+            data: row
+              .along('pushDate')
+              .map(row => ({
+                x: row.getValue('pushDate'),
+                y: row.getValue('result'),
+              }))
+              .toArray(),
+          }))
+          .toArray(),
+      };
+
+      return (
+        <ChartJSWrapper
+          key={label}
+          title={label}
+          type="line"
+          data={chartData}
+          height={200}
+          options={generateOptions()}
+        />
+      );
+    });
   }
 }
 

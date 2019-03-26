@@ -152,7 +152,28 @@ function min(values) {
   return min;
 }
 
+function div(a, b) {
+  if (missing(a) || missing(b) || b === 0) return null;
+
+  return a / b;
+}
+
+function add(a, b) {
+  if (missing(a) || missing(b)) return null;
+
+  return a + b;
+}
+
+function mul(a, b) {
+  if (missing(a) || missing(b)) return null;
+
+  return a * b;
+}
+
 export {
+  div,
+  add,
+  mul,
   ceiling,
   floor,
   round,

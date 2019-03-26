@@ -109,4 +109,4 @@ Domain.newInstance = desc => {
   }
 };
 
-export { Domain, ValueDomain, TimeDomain };
+export { NULL, Domain, ValueDomain, TimeDomain };
