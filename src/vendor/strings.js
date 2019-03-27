@@ -1,10 +1,7 @@
 import { coalesce, isString } from './utils';
 import { value2json } from './convert';
 import { round as mathRound, roundMetric } from './math';
-
 import Date from './dates';
-
-
 
 const between = (v, min, max) => Math.max(min, Math.min(max, v));
 const strings = {

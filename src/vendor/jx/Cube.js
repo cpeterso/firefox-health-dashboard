@@ -240,15 +240,23 @@ class Cube {
    * group by edges, then for each group
    * run name=value(element, coord, matrix) over all rows in group
    */
-  window({ name, value, edges: edgeNames, sort }) {
-    const sort_ = toArray(sort);
+  window({ name, value, edges: edgeNames, along }) {
+    const innerNames = toArray(along);
 
-    if (sort_.length > 1) Log.error('can only handle zero/one dimension');
+    if (innerNames.length > 1) Log.error('can only handle zero/one dimension');
 
-    const outerEdges = edgeNames.map(n => this._getEdgeByName(n));
-    const innerEdges = sort_.map(n => this._getEdgeByName(n));
-    const outerDims = outerEdges.map(e => e.domain.partitions.length);
-    const innerDims = innerEdges.map(e => e.domain.partitions.length);
+    const outerEdges = edgeNames
+      .map(n => this._getEdgeByName(n))
+      .filter(exists);
+    const innerEdges = innerNames
+      .map(n => this._getEdgeByName(n))
+      .filter(exists);
+    const outerDims = outerEdges
+      .map(e => e.domain.partitions.length)
+      .filter(exists);
+    const innerDims = innerEdges
+      .map(e => e.domain.partitions.length)
+      .filter(exists);
     const outerMatrix = new Matrix({
       dims: outerDims,
       zero: () => null,
@@ -256,7 +264,7 @@ class Cube {
 
     for (const [outerRow, outerCoord] of this.sequence(outerEdges)) {
       // WE PEAL BACK ALL THE WRAPPING FOR THE value() FUNCTION TO OPERATE ON
-      if (sort_.length === 0) {
+      if (innerNames.length === 0) {
         const v = value(
           toPairs(outerRow.values)
             .map(d => d.matrix.data)

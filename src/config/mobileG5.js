@@ -57,12 +57,12 @@ const g5Reference = frum(fennec64.data)
   .window({
     name: 'value',
     edges: ['test', 'suite', 'platform'],
-    value: v => {
-      const { test, suite, platform } = v;
+    value: row => {
+      const { test, suite, platform } = row;
 
       if ([test, suite, platform].some(missing)) return null;
 
-      if (v.raw.length > 1) {
+      if (row.raw.length > 1) {
         Log.error('expecting only one value for {{combo}}', {
           test,
           suite,
@@ -70,7 +70,7 @@ const g5Reference = frum(fennec64.data)
         });
       }
 
-      return v.raw[0].value;
+      return row.raw[0].value;
     },
   })
   .select("value");

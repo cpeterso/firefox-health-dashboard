@@ -2,7 +2,6 @@
 import React, { Component } from 'react';
 import { frum } from '../vendor/queryOps';
 import { missing } from '../vendor/utils';
-import { div } from '../vendor/math';
 import { withNavigation } from '../vendor/utils/navigation';
 import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
@@ -44,51 +43,69 @@ class TP6mAggregate extends Component {
     const recent = data.filter(
       jx({ gte: { push_timestamp: { date: 'today-3month' } } })
     );
-    const temp = recent.edges({
-      name: 'measured',
-      edges: [
-        'test',
-        {
-          name: 'pushDate',
-          value: 'push_timestamp',
-          domain: {
-            type: 'time',
-            min: 'today-3month',
-            max: 'today',
-            interval: 'day',
+    const result = recent
+      .edges({
+        name: 'measured',
+        edges: [
+          'test',
+          {
+            name: 'pushDate',
+            value: 'push_timestamp',
+            domain: {
+              type: 'time',
+              min: 'today-3month',
+              max: 'today',
+              interval: 'day',
+            },
           },
+          'suite',
+          'platform',
+        ],
+      })
+      .window({
+        // CHECK EACH TEST/SUITE/DAY FOR MISSING VALUES
+        name: 'daily',
+        edges: ['test', 'suite', 'platform'],
+        along: ['pushDate'],
+        value: (value, c, values) => {
+          const { measured } = value;
+
+          if (c > 0 && measured.length === 0) return values[c - 1];
+
+          return frum(measured)
+            .select('value')
+            .average();
         },
-        'suite',
-        'platform',
-      ],
-    });
-    // CHECK EACH TEST/SUITE/DAY FOR MISSING VALUES
-    const fillHoles = temp.window({
-      name: 'daily',
-      edges: ['test', 'suite', 'platform'],
-      sort: ['pushDate'],
-      value: (value, c, values) => {
-        const { measured } = value;
+      })
+      .extend({ name: 'reference', cube: g5Reference })
+      .window({
+        name: 'result',
+        edges: ['test', 'platform', 'pushDate'],
+        value: row =>
+          frum(row.daily, row.reference.value)
+            // IF NO REFERENCE VALUE FOR SUITE, DO NOT INCLUDE IN AGGREGATE
+            .map((d, r) => (missing(r) ? null : d))
+            .average(),
+      })
+      .window({
+        name: 'ref',
+        edges: ['test', 'platform'],
+        value: row =>
+          frum(row.result, row.reference.value)
+            // IF NO MEASUREMENT FOR SUITE, THEN DO NOT INCLUDE IN REFERENCE AGGREGATE
+            .map((d, r) => {
+              const lastMeasure = d[d.length - 2];
 
-        if (c > 0 && measured.length === 0) return values[c - 1];
+              if (missing(lastMeasure)) return null;
 
-        return frum(measured)
-          .select('value')
-          .average();
-      },
-    });
-    const addRef = fillHoles.extend({ name: 'reference', cube: g5Reference });
-    const final = addRef.window({
-      name: 'result',
-      edges: ['test', 'platform', 'pushDate'],
-      value: row =>
-        frum(row.daily, row.reference.value)
-          .map(div)
-          .average(),
-    });
+              return r;
+            })
+            .average(),
+      })
+      .select(['result', 'ref']);
 
     // SET NORMALIZATION CONSTANTS
-    this.setState({ data: final.select('result') });
+    this.setState({ data: result });
     processData.done();
   }
 
@@ -113,6 +130,18 @@ class TP6mAggregate extends Component {
               }))
               .toArray(),
           }))
+          .append({
+            label: 'Fennec 64',
+            type: 'line',
+            data: data
+              .get({ test: id, platform: 'android-hw-g5-7-0-arm7-api-16' })
+              .along('pushDate')
+              .map(row => ({
+                x: row.getValue('pushDate'),
+                y: row.getValue('ref'),
+              }))
+              .toArray(),
+          })
           .toArray(),
       };
 

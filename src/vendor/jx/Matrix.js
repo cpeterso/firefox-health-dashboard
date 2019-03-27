@@ -87,7 +87,11 @@ class Matrix {
   }
 
   get value() {
-    if (this.dims.length > 0) Log.error('this matrix still has dimension');
+    if (this.dims.length > 0) {
+      Log.error('this matrix still has {{num}} dimensions', {
+        num: this.dims.length,
+      });
+    }
 
     return this.data;
   }
