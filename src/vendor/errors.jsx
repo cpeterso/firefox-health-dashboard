@@ -99,10 +99,8 @@ const withErrorBoundary = WrappedComponent => {
       const error = Exception.wrap(err, info);
 
       this.setState({ error });
-
-      reportOrLog(error, info);
-
       Log.warning(error);
+      reportOrLog(error, info);
     }
 
     async componentDidMount() {

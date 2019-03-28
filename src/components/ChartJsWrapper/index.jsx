@@ -49,9 +49,7 @@ const ChartJsWrapper = ({
       );
     }
 
-    let error = null;
-
-    data.datasets.forEach(dataset => {
+    const allOldData = data.datasets.every(dataset => {
       const latestDataDate = new Date(
         frum(dataset.data)
           .select('x')
@@ -63,14 +61,14 @@ const ChartJsWrapper = ({
       );
       const daysDifference = Math.ceil(timeDifference / (1000 * 3600 * 24));
 
-      if (daysDifference > 3) {
-        error = new Error(
-          'This item has been missing data for at least 3 days.'
-        );
-      }
+      return daysDifference > 3;
     });
 
-    if (error) {
+    if (allOldData) {
+      const error = new Error(
+        'This item has been missing data for at least 3 days.'
+      );
+
       return (
         <div className={classes.chartContainer}>
           <ErrorMessage error={error}>

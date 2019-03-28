@@ -998,34 +998,34 @@ GMTDate.getDateFromFormat = (val_, format_, isPastDate) => {
 // ------------------------------------------------------------------
 {
   const generalFormats = [
-    // 'EE MMM d, yyyy',
-    // 'EE MMM d, yyyy @ hh:mm a',
-    // 'y M d',
-    // 'y - M - d',
-    // 'yyyy - MM - dd HH : mm : ss',
-    // 'MMM d, y',
-    // 'MMM d y',
-    // 'MMM d',
-    // 'y - MMM - d',
+    'EE MMM d, yyyy',
+    'EE MMM d, yyyy @ hh:mm a',
+    'y M d',
+    'y - M - d',
+    'yyyy - MM - dd HH : mm : ss',
+    'MMM d, y',
+    'MMM d y',
+    'MMM d',
+    'y - MMM - d',
     'yyyyMMMd',
-    // 'd - MMM - y',
-    // 'd MMM y',
+    'd - MMM - y',
+    'd MMM y',
   ];
   const monthFirst = [
-    //   'M / d / y',
-    //   'M - d - y',
-    //   'M . d . y',
-    //   'MMM - d',
-    //   'M / d',
-    //   'M - d',
+    'M / d / y',
+    'M - d - y',
+    'M . d . y',
+    'MMM - d',
+    'M / d',
+    'M - d',
   ];
   const dateFirst = [
-    // 'd / M / y',
-    // 'd - M - y',
-    // 'd . M . y',
-    // 'd - MMM',
-    // 'd / M',
-    // 'd - M',
+    'd / M / y',
+    'd - M - y',
+    'd . M . y',
+    'd - MMM',
+    'd / M',
+    'd - M',
   ];
 
   GMTDate.CheckList = []

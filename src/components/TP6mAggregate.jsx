@@ -1,10 +1,11 @@
 /* eslint-disable linebreak-style */
 import React, { Component } from 'react';
 import Grid from '@material-ui/core/Grid/Grid';
+import CircularProgress from '@material-ui/core/CircularProgress/CircularProgress';
+import { withStyles } from '@material-ui/core/styles';
 import { frum } from '../vendor/queryOps';
 import { last, missing } from '../vendor/utils';
 import { average } from '../vendor/math';
-import { withNavigation } from '../vendor/utils/navigation';
 import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
 import generateOptions from '../utils/chartJs/generateOptions';
@@ -13,6 +14,22 @@ import { jx } from '../vendor/jx/expressions';
 import { g5Reference } from '../config/mobileG5';
 import ChartJSWrapper from './ChartJsWrapper';
 import timer from '../vendor/timer';
+import generateDatasetStyle from '../utils/chartJs/generateDatasetStyle';
+import SETTINGS from '../settings';
+
+const styles = () => ({
+  title: {
+    color: '#56565a',
+    fontSize: '1rem',
+    backgroundColor: '#d1d2d3',
+    padding: '.2rem .3rem .3rem .3rem',
+    margin: '0 1rem 0 0',
+  },
+  linkIcon: {
+    marginLeft: '0.2rem',
+    marginBottom: -5,
+  },
+});
 
 class TP6mAggregate extends Component {
   constructor(props) {
@@ -49,10 +66,8 @@ class TP6mAggregate extends Component {
     readData.done();
 
     const processData = timer('process data');
-    const recent = data.filter(
-      jx({ gte: { push_timestamp: { date: 'today-3month' } } })
-    );
-    const result = recent
+    const result = data
+      .filter(jx({ gte: { push_timestamp: { date: 'today-6week' } } }))
       .edges({
         name: 'measured',
         edges: [
@@ -62,7 +77,7 @@ class TP6mAggregate extends Component {
             value: 'push_timestamp',
             domain: {
               type: 'time',
-              min: 'today-3month',
+              min: 'today-6week',
               max: 'today',
               interval: 'day',
             },
@@ -76,15 +91,10 @@ class TP6mAggregate extends Component {
         name: 'daily',
         edges: ['test', 'suite', 'platform'],
         along: ['pushDate'],
-        value: (value, c, values) => {
-          const { measured } = value;
-
-          if (c > 0 && measured.length === 0) return values[c - 1];
-
-          return frum(measured)
+        value: value =>
+          frum(value.measured)
             .select('value')
-            .average();
-        },
+            .average(),
       })
       .extend({ name: 'reference', cube: g5Reference })
       .window({
@@ -115,61 +125,85 @@ class TP6mAggregate extends Component {
   }
 
   render() {
+    const { classes } = this.props;
     const { data } = this.state;
 
-    if (missing(data)) return null;
+    if (missing(data))
+      return (
+        <div
+          style={{
+            lineHeight: '100%',
+            textAlign: 'center',
+            width: '100%',
+          }}>
+          <CircularProgress />
+        </div>
+      );
 
     return (
       <Grid container spacing={24}>
-        {frum(TP6_TESTS).map(({ label, id }) => {
-          const chartData = {
-            datasets: data
-              .where({ test: id })
-              .along('platform')
-              .map(row => ({
-                label: row.getValue('platform'),
-                type: 'line',
-                data: row
-                  .along('pushDate')
-                  .map(row => ({
-                    x: row.getValue('pushDate'),
-                    y: row.getValue('result'),
-                  }))
-                  .toArray(),
-              }))
-              .append({
-                label: 'Fennec 64',
-                type: 'line',
-                data: data
-                  .where({
-                    test: id,
-                    platform: 'android-hw-g5-7-0-arm7-api-16',
-                  })
-                  .along('pushDate')
-                  .map(row => ({
-                    x: row.getValue('pushDate'),
-                    y: row.getValue('ref'),
-                  }))
-                  .toArray(),
-              })
-              .toArray(),
-          };
+        {frum(TP6_TESTS)
+          .filter(row => row.id !== 'fcp')
+          .enumerate()
+          .map(({ label, id }) => {
+            const chartData = {
+              datasets: data
+                .where({ test: id })
+                .along('platform')
+                .enumerate()
+                .map((row, i) => ({
+                  label: row.getValue('platform'),
+                  type: 'line',
+                  data: row
+                    .along('pushDate')
+                    .map(row => ({
+                      x: row.getValue('pushDate'),
+                      y: row.getValue('result'),
+                    }))
+                    .toArray(),
+                  ...generateDatasetStyle(SETTINGS.colors[i]),
+                }))
+                .append({
+                  label: 'Fennec 64',
+                  type: 'line',
+                  backgroundColor: 'gray',
+                  borderColor: 'gray',
+                  fill: false,
+                  pointRadius: '0',
+                  pointHoverBackgroundColor: 'gray',
+                  lineTension: 0,
+                  data: data
+                    .where({
+                      test: id,
+                      platform: 'android-hw-g5-7-0-arm7-api-16-pgo',
+                    })
+                    .along('pushDate')
+                    .map(row => ({
+                      x: row.getValue('pushDate'),
+                      y: row.getValue('ref'),
+                    }))
+                    .toArray(),
+                })
+                .toArray(),
+            };
 
-          return (
-            <Grid item xs={6} key={label}>
-              <ChartJSWrapper
-                title={label}
-                type="line"
-                data={chartData}
-                height={200}
-                options={generateOptions()}
-              />
-            </Grid>
-          );
-        })}
+            return (
+              <Grid item xs={6} key={label}>
+                <h2 className={classes.title}>
+                  <span>{label}</span>
+                </h2>
+                <ChartJSWrapper
+                  type="line"
+                  data={chartData}
+                  height={200}
+                  options={generateOptions()}
+                />
+              </Grid>
+            );
+          })}
       </Grid>
     );
   }
 }
 
-export default withNavigation([])(withErrorBoundary(TP6mAggregate));
+export default withStyles(styles)(withErrorBoundary(TP6mAggregate));

@@ -8,7 +8,10 @@ import { missing } from "../vendor/utils";
 import { Log } from "../vendor/logs";
 import { TP6_TESTS } from "../quantum/config";
 
-const platform = 'android-hw-g5-7-0-arm7-api-16';
+const platforms = [
+  {platform: 'android-hw-g5-7-0-arm7-api-16'},
+  {platform: 'android-hw-g5-7-0-arm7-api-16-pgo'}
+];
 
 const fennec64 =
   {
@@ -47,7 +50,8 @@ const fennec64 =
 const tests = frum(TP6_TESTS).select('id');
 
 const g5Reference = frum(fennec64.data)
-  .map(row=> ({platform, ...Data.zip(fennec64.header, row)}))
+  .map(row => Data.zip(fennec64.header, row))
+  .leftJoin("nothing", platforms, "nothing")
   .map(row => tests.map(test => ({ test, value: row[test], ...row })))
   .flatten()
   .edges({

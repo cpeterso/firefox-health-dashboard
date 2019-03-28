@@ -28,19 +28,9 @@ class Android extends Component {
                   includeBugCount
                   queries={[
                     {
-                      text: 'Open fenix:p1 bugs',
+                      text: 'All GV Fenix MVP bugs',
                       parameters: {
-                        product: 'GeckoView',
-                        resolution: '---',
-                        whiteboard: '[geckoview:fenix:p1]',
-                      },
-                    },
-                    {
-                      text: 'Open fenix:p2 bugs',
-                      parameters: {
-                        product: 'GeckoView',
-                        resolution: '---',
-                        whiteboard: '[geckoview:fenix:p2]',
+                        whiteboard: '[geckoview:fenix:p',
                       },
                     },
                   ]}
@@ -48,23 +38,42 @@ class Android extends Component {
                 <BugzillaGraph
                   queries={[
                     {
-                      label: 'fenix:p1 bugs',
+                      label: 'GV M2 bugs',
                       parameters: {
-                        product: 'GeckoView',
                         resolution: ['---', 'FIXED'],
-                        whiteboard: '[geckoview:fenix:p1]',
+                        whiteboard: '[geckoview:fenix:m2]',
                       },
                     },
                     {
-                      label: 'fenix:p2 bugs',
+                      label: 'GV M3 bugs',
                       parameters: {
-                        product: 'GeckoView',
                         resolution: ['---', 'FIXED'],
-                        whiteboard: '[geckoview:fenix:p2]',
+                        whiteboard: '[geckoview:fenix:m3]',
+                      },
+                    },
+                    {
+                      label: 'GV M4 bugs',
+                      parameters: {
+                        resolution: ['---', 'FIXED'],
+                        whiteboard: '[geckoview:fenix:m4]',
+                      },
+                    },
+                    {
+                      label: 'GV M5 bugs',
+                      parameters: {
+                        resolution: ['---', 'FIXED'],
+                        whiteboard: '[geckoview:fenix:m5]',
+                      },
+                    },
+                    {
+                      label: 'All GV Fenix MVP bugs',
+                      parameters: {
+                        resolution: ['---', 'FIXED'],
+                        whiteboard: '[geckoview:fenix:m',
                       },
                     },
                   ]}
-                  startDate="2018-03-01"
+                  startDate="2019-02-01"
                   title="GeckoView Fenix bugs"
                 />
               </Section>
@@ -77,92 +86,116 @@ class Android extends Component {
             </Grid>
           </Grid>
         </div>
-        <Section
-          title="Page Load tests (TP6m)"
-          more="/android/tp6m?test=loadtime">
+        <Section title="Raptor (TP6m)" more="/android/tp6m?test=loadtime">
           <TP6mAggregate />
         </Section>
         <Section title="Telemetry">
-          <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-            <RedashContainer
-              title="Total content page load time (no 95th)"
-              redashDataUrl="https://sql.telemetry.mozilla.org/api/queries/59395/results.json?api_key=2L0YcuUULtECr9bfew9OAEgtC50G4Ri8NCSPLR5F"
-              redashQueryUrl="https://sql.telemetry.mozilla.org/queries/59395"
-            />
-            <RedashContainer
-              title="Total content page load time"
-              redashDataUrl="https://sql.telemetry.mozilla.org/api/queries/59397/results.json?api_key=u9eculhXgxqgsluxYGxfXaWQ6g7KCXioEvfwjK83"
-              redashQueryUrl="https://sql.telemetry.mozilla.org/queries/59397"
-            />
-          </div>
+          <Grid container spacing={24}>
+            <Grid item xs={6}>
+              <RedashContainer
+                title="Total content page load time (no 95th)"
+                redashDataUrl="https://sql.telemetry.mozilla.org/api/queries/59395/results.json?api_key=2L0YcuUULtECr9bfew9OAEgtC50G4Ri8NCSPLR5F"
+                redashQueryUrl="https://sql.telemetry.mozilla.org/queries/59395"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <RedashContainer
+                title="Total content page load time"
+                redashDataUrl="https://sql.telemetry.mozilla.org/api/queries/59397/results.json?api_key=u9eculhXgxqgsluxYGxfXaWQ6g7KCXioEvfwjK83"
+                redashQueryUrl="https://sql.telemetry.mozilla.org/queries/59397"
+              />
+            </Grid>
+          </Grid>
         </Section>
         <Section
           title="Perfherder"
           subtitle="Lower in the graph is better regardless if it is a score or execution time (read the Y label)">
-          <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-            <PerfherderGraphContainer
-              title="Speedometer"
-              series={[
-                {
-                  label: 'Moto G5 (arm7)',
-                  seriesConfig: {
-                    framework: 10,
-                    platform: 'android-hw-g5-7-0-arm7-api-16',
-                    option: 'opt',
-                    project: 'mozilla-central',
-                    suite: 'raptor-speedometer-geckoview',
+          <Grid container spacing={24}>
+            <Grid item xs={6}>
+              <PerfherderGraphContainer
+                title="Speedometer"
+                series={[
+                  {
+                    label: 'Moto G5 (arm7)',
+                    seriesConfig: {
+                      framework: 10,
+                      platform: 'android-hw-g5-7-0-arm7-api-16',
+                      option: 'opt',
+                      project: 'mozilla-central',
+                      suite: 'raptor-speedometer-geckoview',
+                    },
                   },
-                },
-                {
-                  label: 'Pixel 2 (arm7)',
-                  seriesConfig: {
-                    framework: 10,
-                    option: 'opt',
-                    platform: 'android-hw-p2-8-0-arm7-api-16',
-                    project: 'mozilla-central',
-                    suite: 'raptor-speedometer-geckoview',
+                  {
+                    label: 'Pixel 2 (arm7)',
+                    seriesConfig: {
+                      framework: 10,
+                      option: 'opt',
+                      platform: 'android-hw-p2-8-0-arm7-api-16',
+                      project: 'mozilla-central',
+                      suite: 'raptor-speedometer-geckoview',
+                    },
                   },
-                },
-                {
-                  label: 'Pixel 2 (ARM64)',
-                  seriesConfig: {
-                    framework: 10,
-                    option: 'opt',
-                    platform: 'android-hw-p2-8-0-android-aarch64',
-                    project: 'mozilla-central',
-                    suite: 'raptor-speedometer-geckoview',
+                  {
+                    label: 'Pixel 2 (ARM64)',
+                    seriesConfig: {
+                      framework: 10,
+                      option: 'opt',
+                      platform: 'android-hw-p2-8-0-android-aarch64',
+                      project: 'mozilla-central',
+                      suite: 'raptor-speedometer-geckoview',
+                    },
                   },
-                },
-              ]}
-            />
-            <PerfherderGraphContainer
-              title="Unity WebGl"
-              series={[
-                {
-                  color: SETTINGS.colors[0],
-                  label: 'Moto G5 (arm7)',
-                  seriesConfig: {
-                    framework: 10,
-                    platform: 'android-hw-g5-7-0-arm7-api-16',
-                    option: 'opt',
-                    project: 'mozilla-central',
-                    suite: 'raptor-unity-webgl-geckoview',
+                  {
+                    label: 'Moto G5 (pgo)',
+                    seriesConfig: {
+                      framework: 10,
+                      platform: 'android-hw-g5-7-0-arm7-api-16-pgo',
+                      project: 'mozilla-central',
+                      suite: 'raptor-speedometer-geckoview',
+                    },
                   },
-                },
-                {
-                  color: SETTINGS.colors[1],
-                  label: 'Pixel 2 (arm7)',
-                  seriesConfig: {
-                    framework: 10,
-                    platform: 'android-hw-p2-8-0-arm7-api-16',
-                    option: 'opt',
-                    project: 'mozilla-central',
-                    suite: 'raptor-unity-webgl-geckoview',
+                  {
+                    label: 'Pixel 2 (pgo)',
+                    seriesConfig: {
+                      framework: 10,
+                      platform: 'android-hw-p2-8-0-arm7-api-16-pgo',
+                      project: 'mozilla-central',
+                      suite: 'raptor-speedometer-geckoview',
+                    },
                   },
-                },
-              ]}
-            />
-          </div>
+                ]}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <PerfherderGraphContainer
+                title="Unity WebGl"
+                series={[
+                  {
+                    color: SETTINGS.colors[0],
+                    label: 'Moto G5 (arm7)',
+                    seriesConfig: {
+                      framework: 10,
+                      platform: 'android-hw-g5-7-0-arm7-api-16',
+                      option: 'opt',
+                      project: 'mozilla-central',
+                      suite: 'raptor-unity-webgl-geckoview',
+                    },
+                  },
+                  {
+                    color: SETTINGS.colors[1],
+                    label: 'Pixel 2 (arm7)',
+                    seriesConfig: {
+                      framework: 10,
+                      platform: 'android-hw-p2-8-0-arm7-api-16',
+                      option: 'opt',
+                      project: 'mozilla-central',
+                      suite: 'raptor-unity-webgl-geckoview',
+                    },
+                  },
+                ]}
+              />
+            </Grid>
+          </Grid>
         </Section>
       </DashboardPage>
     );

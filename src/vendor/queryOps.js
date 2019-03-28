@@ -584,9 +584,10 @@ extendWrapper({
     const lookup = internalFrum(listB)
       .groupBy(propB)
       .fromPairs();
+    const getterA = jx(propA);
 
     return internalFrum(listA)
-      .map(rowA => lookup[rowA[propA]].map(rowB => ({ ...rowA, ...rowB })))
+      .map(rowA => lookup[getterA(rowA)].map(rowB => ({ ...rowA, ...rowB })))
       .flatten();
   },
 
