@@ -78,8 +78,7 @@ function expandText(template, namespaces) {
           try {
             val = run(method, val, rest);
           } catch (f) {
-            // eslint-disable-next-line no-console
-            console.warn(`Can not evaluate {{variable|json}}`, { variable }, f);
+            Log.warning(`Can not evaluate {{variable|json}}`, { variable }, f);
           }
         }
       });

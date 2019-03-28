@@ -1,6 +1,5 @@
 /* global window */
 /* eslint-disable no-restricted-syntax */
-import { ArrayWrapper } from './queryOps';
 
 const { isArray } = Array;
 const zero = () => 0;
@@ -34,6 +33,8 @@ function first(list) {
 }
 
 function last(list) {
+  if (isArray(list)) return list[list.length - 1];
+
   let value = null;
 
   for (const v of list) value = v;
@@ -41,25 +42,21 @@ function last(list) {
   return value;
 }
 
-function toArray(value) {
-  // return a list
-  if (isArray(value)) {
-    return value;
-  }
-
-  if (value instanceof ArrayWrapper) {
-    return value.toArray();
-  }
-
-  if (value == null) {
-    return [];
-  }
-
-  return [value];
-}
-
 function isString(value) {
   return typeof value === 'string';
+}
+
+function toArray(value) {
+  // return a list
+  if (value == null) return [];
+
+  if (isString(value)) return [value];
+
+  if (isArray(value)) return value;
+
+  if (value[Symbol.iterator]) return Array.from(value);
+
+  return [value];
 }
 
 function isNumeric(n) {
@@ -87,6 +84,8 @@ const OBJECT_CONSTRUCTOR = {}.constructor;
  * objects that are best serialized as JSON objects
  */
 function isData(val) {
+  if (missing(val)) return false;
+
   return val.constructor === OBJECT_CONSTRUCTOR;
 }
 

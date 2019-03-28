@@ -4,7 +4,7 @@ import Date from '../../src/vendor/dates';
 
 describe('dates', () => {
   it('gmt', () => {
-    expect(Date('1970 jan 1')).toEqual(0);
+    expect(Date.newInstance('1970 jan 1').unix()).toEqual(0);
   });
 
   it('today', () => {
@@ -12,12 +12,10 @@ describe('dates', () => {
   });
 
   it('epoch', () => {
-    const timezone = Date('1970 jan 1')
+    const timezone = Date.newInstance('1970 jan 1')
       .floorDay()
       .unix();
 
-    // eslint-disable-next-line no-console
-    console.log(`timezone=${timezone / (60 * 60)}hours`);
     expect(timezone).toEqual(0);
   });
 });

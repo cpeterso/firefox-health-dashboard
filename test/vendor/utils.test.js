@@ -2,6 +2,7 @@
 import {
   array,
   isData,
+  toArray,
   isInteger,
   isNumeric,
   literalField,
@@ -75,11 +76,24 @@ describe('utils', () => {
     expect(array(6).map(() => 1)[2]).toEqual(1);
   });
 
+  it('toArray', () => {
+    expect(toArray(null)).toEqual([]);
+    expect(toArray(undefined)).toEqual([]);
+    expect(toArray(0)).toEqual([0]);
+    expect(toArray('')).toEqual(['']);
+    expect(toArray('test')).toEqual(['test']);
+    expect(toArray(true)).toEqual([true]);
+    expect(toArray(false)).toEqual([false]);
+    expect(toArray({})).toEqual([{}]);
+    expect(toArray(frum([]))).toEqual([]);
+  });
+
   it('isData', () => {
+    expect(isData({})).toBe(true);
     expect(isData([])).toBe(false);
     expect(isData(frum([]))).toBe(false);
     expect(isData(() => 0)).toBe(false);
-    expect(GMTDate().now()).toBe(false);
+    expect(isData(GMTDate.now())).toBe(false);
     expect(isData(new Duration())).toBe(false);
     expect(isData('')).toBe(false);
     expect(isData('test')).toBe(false);

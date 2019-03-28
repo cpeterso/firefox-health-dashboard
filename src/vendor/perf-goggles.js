@@ -1,7 +1,6 @@
 import 'isomorphic-fetch';
 import isEqual from 'lodash/isEqual';
 import { stringify } from 'query-string';
-import { cache } from './promises';
 
 export const TREEHERDER = 'https://treeherder.mozilla.org';
 const PROJECT = 'mozilla-central';
@@ -92,11 +91,11 @@ const perfherderGraphUrl = (
   return baseDataUrl;
 };
 
-const queryAllTreeherderOptions = cache(async () => {
+const queryAllTreeherderOptions = (async () => {
   const response = await fetch(`${TREEHERDER}/api/optioncollectionhash/`);
 
   return response.json();
-});
+})();
 const transformOptionCollectionHash = optionCollectionHash => {
   const options = {};
 
@@ -115,7 +114,7 @@ const transformOptionCollectionHash = optionCollectionHash => {
 };
 
 const treeherderOptions = async () => {
-  const optionCollectionHash = await queryAllTreeherderOptions();
+  const optionCollectionHash = await queryAllTreeherderOptions;
 
   return transformOptionCollectionHash(optionCollectionHash);
 };

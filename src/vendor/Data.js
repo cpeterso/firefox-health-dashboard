@@ -63,8 +63,7 @@ Data.setDefault = (dest, ...args) => {
       if (missing(value)) {
         output[key] = sourceValue;
       } else if (path.indexOf(value) !== -1) {
-        // eslint-disable-next-line no-console
-        console.warn('possible loop');
+        Log.warning('possible loop');
       } else if (isData(value)) {
         setDefault(value, sourceValue, path.concat([value]));
       }

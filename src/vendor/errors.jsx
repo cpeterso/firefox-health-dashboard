@@ -102,8 +102,7 @@ const withErrorBoundary = WrappedComponent => {
 
       reportOrLog(error, info);
 
-      // eslint-disable-next-line no-console
-      console.warn(error);
+      Log.warning(error);
     }
 
     async componentDidMount() {

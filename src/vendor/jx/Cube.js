@@ -44,7 +44,7 @@ class Cube {
    * Expecting combination object with {edge: value} pairs
    * return a (reduced dimension) cube
    */
-  get(combination) {
+  where(combination) {
     const selections = toPairs(combination)
       .map((value, edgeName) =>
         this._getEdgeByName(edgeName).domain.partitions.findIndex(

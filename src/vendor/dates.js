@@ -1,6 +1,7 @@
 /* eslint-disable linebreak-style */
 /* eslint-disable max-len */
 /* eslint-disable no-underscore-dangle */
+/* eslint-disable no-loop-func */
 
 import {
   coalesce,
@@ -12,17 +13,17 @@ import {
   missing,
   first,
 } from './utils';
-import { frum } from './queryOps';
 import { Duration } from './durations';
 import { abs, ceiling, floor, round, sign } from './math';
 import { Log } from './logs';
+import strings from './strings';
 
 const twoDigits = x => (x < 0 || x > 9 ? '' : '0') + x;
 
 class GMTDate extends Date {
   unix = () =>
     // RETURN NUMBER OF SECONDS SINCE EPOCH
-    this.milli() / 1000.0; // function
+    this.milli() / 1000.0;
 
   between = (min, max) => {
     if (exists(min)) {
@@ -728,12 +729,9 @@ function internalChecks(year, month, date, hh_, mm, ss, fff, ampm) {
     hh -= 12;
   }
 
-  const newDate = new GMTDate(
-    GMTDate.UTC(year, month - 1, date, hh, mm, ss, fff)
-  );
+  const milli = Date.UTC(year, month - 1, date, hh, mm, ss, fff);
 
-  // newDate=newDate.addMinutes(new GMTDate().getTimezoneOffset());
-  return newDate;
+  return new GMTDate(milli);
 }
 
 // ------------------------------------------------------------------
@@ -749,7 +747,7 @@ function internalChecks(year, month, date, hh_, mm, ss, fff, ampm) {
 // ------------------------------------------------------------------
 GMTDate.getDateFromFormat = (val_, format_, isPastDate) => {
   const val = `${val_}`;
-  const format = `${format_}`;
+  const format = format_;
   let valueIndex = 0;
   let formatIndex = 0;
   let token = '';
@@ -767,12 +765,16 @@ GMTDate.getDateFromFormat = (val_, format_, isPastDate) => {
   let ampm = '';
 
   while (formatIndex < format.length) {
+    while (val.charAt(valueIndex) === ' ' && valueIndex < val.length)
+      valueIndex += 1;
+
     // Get next token from format string
     token = '';
     const c = format.charAt(formatIndex);
 
     while (format.charAt(formatIndex) === c && formatIndex < format.length) {
-      token += format.charAt((formatIndex += 1));
+      token += format.charAt(formatIndex);
+      formatIndex += 1;
     } // while
 
     // Extract contents of value based on format token
@@ -807,8 +809,7 @@ GMTDate.getDateFromFormat = (val_, format_, isPastDate) => {
     } else if (token === 'MMM' || token === 'NNN') {
       month = 0;
 
-      for (let i = 0; i < GMTDate.MONTH_NAMES.length; i += 1) {
-        const monthName = GMTDate.monthNameS[i];
+      GMTDate.MONTH_NAMES.some((monthName, i) => {
         let prefixLength = 0;
 
         while (
@@ -827,10 +828,13 @@ GMTDate.getDateFromFormat = (val_, format_, isPastDate) => {
             }
 
             valueIndex += prefixLength;
-            break;
+
+            return true;
           }
         }
-      }
+
+        return false;
+      });
 
       if (month < 1 || month > 12) {
         return 0;
@@ -994,34 +998,34 @@ GMTDate.getDateFromFormat = (val_, format_, isPastDate) => {
 // ------------------------------------------------------------------
 {
   const generalFormats = [
-    'EE MMM d, yyyy',
-    'EE MMM d, yyyy @ hh:mm a',
-    'y M d',
-    'y - M - d',
-    'yyyy - MM - dd HH : mm : ss',
-    'MMM d, y',
-    'MMM d y',
-    'MMM d',
-    'y - MMM - d',
+    // 'EE MMM d, yyyy',
+    // 'EE MMM d, yyyy @ hh:mm a',
+    // 'y M d',
+    // 'y - M - d',
+    // 'yyyy - MM - dd HH : mm : ss',
+    // 'MMM d, y',
+    // 'MMM d y',
+    // 'MMM d',
+    // 'y - MMM - d',
     'yyyyMMMd',
-    'd - MMM - y',
-    'd MMM y',
+    // 'd - MMM - y',
+    // 'd MMM y',
   ];
   const monthFirst = [
-    'M / d / y',
-    'M - d - y',
-    'M . d . y',
-    'MMM - d',
-    'M / d',
-    'M - d',
+    //   'M / d / y',
+    //   'M - d - y',
+    //   'M . d . y',
+    //   'MMM - d',
+    //   'M / d',
+    //   'M - d',
   ];
   const dateFirst = [
-    'd / M / y',
-    'd - M - y',
-    'd . M . y',
-    'd - MMM',
-    'd / M',
-    'd - M',
+    // 'd / M / y',
+    // 'd - M - y',
+    // 'd . M . y',
+    // 'd - MMM',
+    // 'd / M',
+    // 'd - M',
   ];
 
   GMTDate.CheckList = []
@@ -1037,9 +1041,13 @@ const RELATIVE = {
 };
 
 GMTDate.parseRelative = val => {
-  const parts = frum(val.split('+'))
-    .map(t => t.split('-').map((tt, i) => [i === 0 ? 'add' : 'subtract', tt]))
-    .flatten();
+  const parts = [];
+
+  val.split('+').forEach(t => {
+    t.split('-').forEach((tt, i) => {
+      parts.push([i === 0 ? 'add' : 'subtract', tt]);
+    });
+  });
   const funcName = RELATIVE[first(parts)[1]];
 
   if (funcName) {
@@ -1055,7 +1063,7 @@ GMTDate.parseRelative = val => {
   return Duration.parse(val);
 };
 
-GMTDate.tryParse = (val_, isFutureDate) => {
+GMTDate.tryParse = (val_, isFutureDate = false) => {
   const val = val_.trim();
 
   // ATTEMPT EXPRESSIONS
@@ -1065,24 +1073,19 @@ GMTDate.tryParse = (val_, isFutureDate) => {
 
   let d = null;
 
-  for (let i = 0; i < GMTDate.CheckList.length; i += 1) {
-    d = GMTDate.getDateFromFormat(
-      val,
-      GMTDate.CheckList[i],
-      !coalesce(isFutureDate, false)
-    );
+  GMTDate.CheckList.some((format, i) => {
+    d = GMTDate.getDateFromFormat(val, format, isFutureDate);
 
-    if (d !== 0) {
-      const candidate = GMTDate.CheckList[i];
+    if (d === 0) return false;
 
-      GMTDate.CheckList.splice(i, 1);
-      GMTDate.CheckList.prepend(candidate);
+    // MAKE THIS THE PREFERRED FORMAT
+    GMTDate.CheckList.splice(i, 1);
+    GMTDate.CheckList.unshift(format);
 
-      return d;
-    }
-  }
+    return true;
+  });
 
-  return null;
+  return d;
 };
 
 GMTDate.EPOCH = GMTDate.newInstance('1/1/1970');
@@ -1100,5 +1103,13 @@ GMTDate.range = ({ min, max, interval }) => {
 
   return output;
 };
+
+strings.format = (value, format) => {
+  const ff = coalesce(format, 'yyyy-MM-dd HH:mm:ss');
+
+  return GMTDate.newInstance(value).format(ff);
+};
+
+strings.unix = value => GMTDate.newInstance(value).unix();
 
 export default GMTDate;

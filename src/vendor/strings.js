@@ -1,7 +1,5 @@
 import { coalesce, isString } from './utils';
-import { value2json } from './convert';
 import { round as mathRound, roundMetric } from './math';
-import Date from './dates';
 
 const between = (v, min, max) => Math.max(min, Math.min(max, v));
 const strings = {
@@ -29,9 +27,6 @@ const strings = {
     return value.slice(between(amount, 0, value.length), value.length);
   },
 
-  json(value) {
-    return value2json(value);
-  },
   comma(value) {
     // SNAGGED FROM http://stackoverflow.com/questions/2901102/how-to-print-a-number-with-commas-as-thousands-separators-in-javascript
     const parts = value.toString().split('.');
@@ -41,7 +36,7 @@ const strings = {
     return parts.join('.');
   },
   quote(value) {
-    return value2json(value);
+    return strings.json(value);
   },
   round(value, digits) {
     const v = isString(value) ? Number.parseFloat(value) : value;
@@ -55,7 +50,7 @@ const strings = {
       return value.toUpperCase();
     }
 
-    return value2json(value).toUpperCase();
+    return strings.json(value).toUpperCase();
   },
 
   lower(value) {
@@ -63,17 +58,7 @@ const strings = {
       return value.toLowerCase();
     }
 
-    return value2json(value).toLowerCase();
-  },
-
-  format(value, format) {
-    const ff = coalesce(format, 'yyyy-MM-dd HH:mm:ss');
-
-    return Date.newInstance(value).format(ff);
-  },
-
-  unix(value) {
-    return new Date(value).valueOf();
+    return strings.json(value).toLowerCase();
   },
 
   trimLeft(value, prefix) {

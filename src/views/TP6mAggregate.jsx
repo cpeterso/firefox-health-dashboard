@@ -1,7 +1,8 @@
 /* eslint-disable linebreak-style */
 import React, { Component } from 'react';
 import { frum } from '../vendor/queryOps';
-import { missing } from '../vendor/utils';
+import { last, missing } from '../vendor/utils';
+import { average } from '../vendor/math';
 import { withNavigation } from '../vendor/utils/navigation';
 import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
@@ -26,7 +27,14 @@ class TP6mAggregate extends Component {
     const readData = timer('read data');
     const data = await getData(pages.select('framework'), {
       and: [
-        { eq: { platform: 'android-hw-g5-7-0-arm7-api-16' } },
+        {
+          in: {
+            platform: [
+              'android-hw-g5-7-0-arm7-api-16',
+              'android-hw-g5-7-0-arm7-api-16-pgo',
+            ],
+          },
+        },
         { prefix: { suite: 'raptor-tp6m-' } },
         { in: { test: tests } },
         {
@@ -90,17 +98,13 @@ class TP6mAggregate extends Component {
       .window({
         name: 'ref',
         edges: ['test', 'platform'],
-        value: row =>
-          frum(row.result, row.reference.value)
-            // IF NO MEASUREMENT FOR SUITE, THEN DO NOT INCLUDE IN REFERENCE AGGREGATE
-            .map((d, r) => {
-              const lastMeasure = d[d.length - 2];
+        value: row => {
+          const lastMeasure = last(row.result);
 
-              if (missing(lastMeasure)) return null;
+          if (missing(lastMeasure)) return null;
 
-              return r;
-            })
-            .average(),
+          return average(row.reference.value);
+        },
       })
       .select(['result', 'ref']);
 
@@ -117,7 +121,7 @@ class TP6mAggregate extends Component {
     return frum(TP6_TESTS).map(({ label, id }) => {
       const chartData = {
         datasets: data
-          .get({ test: id })
+          .where({ test: id })
           .along('platform')
           .map(row => ({
             label: row.getValue('platform'),
@@ -134,7 +138,7 @@ class TP6mAggregate extends Component {
             label: 'Fennec 64',
             type: 'line',
             data: data
-              .get({ test: id, platform: 'android-hw-g5-7-0-arm7-api-16' })
+              .where({ test: id, platform: 'android-hw-g5-7-0-arm7-api-16' })
               .along('pushDate')
               .map(row => ({
                 x: row.getValue('pushDate'),

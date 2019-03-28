@@ -134,4 +134,6 @@ function value2json(json) {
   return prettyJSON(json, 30);
 }
 
+strings.json = value2json;
+
 export { fromQueryString, toQueryString, value2json, json2value };

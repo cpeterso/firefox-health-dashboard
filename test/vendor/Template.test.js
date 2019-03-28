@@ -1,8 +1,13 @@
 /* global describe, it */
 import Template from '../../src/vendor/Template';
 import strings from '../../src/vendor/strings';
+import { value2json } from '../../src/vendor/convert';
 
 describe('Template', () => {
+  it('verify import', () => {
+    expect(strings.json).toBe(value2json);
+  });
+
   it('expand', () => {
     const value = 42;
     const result = Template.expand('{{value}}', { value });
@@ -107,7 +112,7 @@ describe('Template', () => {
     const value = 1551730631.234;
     const result = Template.expand('{{value|unix}}', { value });
 
-    expect(result).toBe('1551730631');
+    expect(result).toBe('1551730631.234');
   });
 
   it('loop', () => {

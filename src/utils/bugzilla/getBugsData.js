@@ -3,6 +3,7 @@
 import queryBugzilla from './queryBugzilla';
 import generateDatasetStyle from '../chartJs/generateDatasetStyle';
 import SETTINGS from '../../settings';
+import Date from '../../vendor/dates';
 
 const newDate = (datetime, startDate) => {
   const onlyDate = datetime.slice(0, 10);

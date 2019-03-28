@@ -5,6 +5,7 @@ import {
   toQueryString,
   fromQueryString,
 } from '../../src/vendor/convert';
+import { Log } from '../../src/vendor/logs';
 
 describe('convert', () => {
   it('value2json', () => {
@@ -78,8 +79,7 @@ describe('convert', () => {
         (() => {
           const qs = toQueryString(obj);
 
-          // eslint-disable-next-line no-console
-          console.log(`${JSON.stringify(obj)}  <=>  ${JSON.stringify(qs)}`);
+          Log.note('{{obj}} <=> {{qs}}', { obj, qs });
 
           return fromQueryString(qs);
         })()
