@@ -1,5 +1,6 @@
 /* eslint-disable linebreak-style */
 import React, { Component } from 'react';
+import Grid from '@material-ui/core/Grid/Grid';
 import { frum } from '../vendor/queryOps';
 import { last, missing } from '../vendor/utils';
 import { average } from '../vendor/math';
@@ -10,7 +11,7 @@ import generateOptions from '../utils/chartJs/generateOptions';
 import { withErrorBoundary } from '../vendor/errors';
 import { jx } from '../vendor/jx/expressions';
 import { g5Reference } from '../config/mobileG5';
-import ChartJSWrapper from '../components/ChartJsWrapper';
+import ChartJSWrapper from './ChartJsWrapper';
 import timer from '../vendor/timer';
 
 class TP6mAggregate extends Component {
@@ -118,48 +119,56 @@ class TP6mAggregate extends Component {
 
     if (missing(data)) return null;
 
-    return frum(TP6_TESTS).map(({ label, id }) => {
-      const chartData = {
-        datasets: data
-          .where({ test: id })
-          .along('platform')
-          .map(row => ({
-            label: row.getValue('platform'),
-            type: 'line',
-            data: row
-              .along('pushDate')
+    return (
+      <Grid container spacing={24}>
+        {frum(TP6_TESTS).map(({ label, id }) => {
+          const chartData = {
+            datasets: data
+              .where({ test: id })
+              .along('platform')
               .map(row => ({
-                x: row.getValue('pushDate'),
-                y: row.getValue('result'),
+                label: row.getValue('platform'),
+                type: 'line',
+                data: row
+                  .along('pushDate')
+                  .map(row => ({
+                    x: row.getValue('pushDate'),
+                    y: row.getValue('result'),
+                  }))
+                  .toArray(),
               }))
+              .append({
+                label: 'Fennec 64',
+                type: 'line',
+                data: data
+                  .where({
+                    test: id,
+                    platform: 'android-hw-g5-7-0-arm7-api-16',
+                  })
+                  .along('pushDate')
+                  .map(row => ({
+                    x: row.getValue('pushDate'),
+                    y: row.getValue('ref'),
+                  }))
+                  .toArray(),
+              })
               .toArray(),
-          }))
-          .append({
-            label: 'Fennec 64',
-            type: 'line',
-            data: data
-              .where({ test: id, platform: 'android-hw-g5-7-0-arm7-api-16' })
-              .along('pushDate')
-              .map(row => ({
-                x: row.getValue('pushDate'),
-                y: row.getValue('ref'),
-              }))
-              .toArray(),
-          })
-          .toArray(),
-      };
+          };
 
-      return (
-        <ChartJSWrapper
-          key={label}
-          title={label}
-          type="line"
-          data={chartData}
-          height={200}
-          options={generateOptions()}
-        />
-      );
-    });
+          return (
+            <Grid item xs={6} key={label}>
+              <ChartJSWrapper
+                title={label}
+                type="line"
+                data={chartData}
+                height={200}
+                options={generateOptions()}
+              />
+            </Grid>
+          );
+        })}
+      </Grid>
+    );
   }
 }
 

@@ -10,8 +10,7 @@ import PerfherderGraphContainer from '../../containers/PerfherderGraphContainer'
 import RedashContainer from '../../containers/RedashContainer';
 import SETTINGS from '../../settings';
 import CONFIG from '../../utils/nimbledroid/config';
-import { frum } from '../../vendor/queryOps';
-import { TP6M_PAGES } from '../../quantum/config';
+import TP6mAggregate from '../../components/TP6mAggregate';
 
 class Android extends Component {
   render() {
@@ -81,36 +80,7 @@ class Android extends Component {
         <Section
           title="Page Load tests (TP6m)"
           more="/android/tp6m?test=loadtime">
-          <Grid container spacing={24}>
-            {frum(TP6M_PAGES)
-              .where({
-                platform: 'android-hw-g5-7-0-arm7-api-16',
-                title: [
-                  'Tp6 mobile: Google',
-                  'Tp6 mobile: YouTube',
-                  'Tp6 mobile: Facebook',
-                  'Tp6 mobile: Wikipedia',
-                ],
-              })
-              .groupBy('title')
-              .map((series, title) => (
-                <Grid item xs={6} key={`page_${title}_loadtime`}>
-                  <PerfherderGraphContainer
-                    title={title}
-                    series={frum(series)
-                      .sortBy(['browser'])
-                      .reverse()
-                      .map(s => ({
-                        label: s.label,
-                        seriesConfig: { ...s, test: 'loadtime' },
-                        options: { includeSubtests: true },
-                      }))
-                      .toArray()}
-                  />
-                </Grid>
-              ))
-              .limit(4)}
-          </Grid>
+          <TP6mAggregate />
         </Section>
         <Section title="Telemetry">
           <div style={{ display: 'flex', flexWrap: 'wrap' }}>
