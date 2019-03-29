@@ -665,7 +665,9 @@ GMTDate.getBestInterval = (
     const biggest = dur.divideBy(min).month;
 
     return coalesce(
-      Duration.COMMON_INTERVALS.slice().reverse().find(d => biggest > d.month),
+      Duration.COMMON_INTERVALS.slice()
+        .reverse()
+        .find(d => biggest > d.month),
       Duration.COMMON_INTERVALS[0]
     );
   }
@@ -678,7 +680,9 @@ GMTDate.getBestInterval = (
 
   if (requested > biggest) {
     return coalesce(
-      Duration.COMMON_INTERVALS.slice().reverse().find(d => biggest > d.milli),
+      Duration.COMMON_INTERVALS.slice()
+        .reverse()
+        .find(d => biggest > d.milli),
       Duration.COMMON_INTERVALS[0]
     );
   }

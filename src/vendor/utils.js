@@ -48,6 +48,16 @@ function last(list) {
   return value;
 }
 
+/*
+return all but last element
+ */
+function notLast(list) {
+  if (isArray(list)) return list.slice(0, list.length - 1);
+  const arr = Array.from(list);
+
+  return arr.slice(arr.length - 1);
+}
+
 function isString(value) {
   return typeof value === 'string';
 }
@@ -171,4 +181,5 @@ export {
   zip,
   array,
   zero,
+  notLast,
 };

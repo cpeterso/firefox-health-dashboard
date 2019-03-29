@@ -133,4 +133,11 @@ describe('vectors', () => {
     expect(toPairs({}).length).toEqual(0);
     expect(toPairs({}).exists().length).toEqual(0);
   });
+
+  it('reverse', () => {
+    const a = chainFrom([1, 2, 3]);
+
+    expect(a.reverse().toArray()).toEqual([3, 2, 1]);
+    expect(a.toArray()).toEqual([1, 2, 3]);
+  });
 });

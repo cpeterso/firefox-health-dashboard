@@ -50,8 +50,7 @@ function toQueryString(value) {
         return `${e(k)}=${e(vv)}`;
       })
       .join('&');
-  const temp = leaves;
-  const output = temp(value)
+  const output = leaves(value)
     .map(encode)
     .concatenate('&');
 

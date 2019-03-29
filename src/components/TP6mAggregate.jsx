@@ -4,7 +4,7 @@ import Grid from '@material-ui/core/Grid/Grid';
 import CircularProgress from '@material-ui/core/CircularProgress/CircularProgress';
 import { withStyles } from '@material-ui/core/styles';
 import { chainFrom } from '../vendor/vectors';
-import { last, missing } from '../vendor/utils';
+import { last, notLast, missing } from '../vendor/utils';
 import { geomean } from '../vendor/math';
 import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
@@ -128,7 +128,7 @@ class TP6mAggregate extends Component {
         name: 'ref',
         edges: ['test', 'platform'],
         value: row => {
-          const lastMeasure = last(row.result);
+          const lastMeasure = last(notLast(row.result));
 
           if (missing(lastMeasure)) return null;
 

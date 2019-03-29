@@ -329,7 +329,6 @@ class ArrayWrapper {
   google "sql group by cube" for more information
    */
   edges({ name = '.', edges, zero = array }) {
-
     const normalizedEdges = edges.map(Edge.newInstance);
     const dims = normalizedEdges.map(e => e.domain.partitions.length);
     const matrix = new Matrix({ dims, zero });

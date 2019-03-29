@@ -238,7 +238,8 @@ class Cube {
 
   /*
    * group by edges, then for each group
-   * run name=value(element, coord, matrix) over all rows in group
+   * run name=value(row, coord, rows) over all rows in group
+   *
    */
   window({ name, value, edges: edgeNames, along }) {
     const innerNames = toArray(along);

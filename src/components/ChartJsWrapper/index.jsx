@@ -120,8 +120,8 @@ ChartJsWrapper.propTypes = {
             x: PropTypes.oneOfType([
               PropTypes.string,
               PropTypes.instanceOf(Date),
-            ]).isRequired,
-            y: PropTypes.number.isRequired,
+            ]),
+            y: PropTypes.number,
           })
         ),
         label: PropTypes.string.isRequired,

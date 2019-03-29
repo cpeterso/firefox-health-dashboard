@@ -10,6 +10,8 @@ import {
   round,
   roundMetric,
   sum,
+  geomean,
+  exp,
   div,
 } from '../../src/vendor/math';
 import { chainFrom } from '../../src/vendor/vectors';
@@ -159,7 +161,19 @@ describe('math', () => {
   });
 
   it('broken js: division', () => {
-    expect(null / 1).toBe(0); // NOT EXPECTED
+    // WE EXPECT THIS CALCUALTION TO FAIL, OR RETURN NOTHING
+    // WE DO NOT EXPECT A LEGITIMATE VALUE
+    expect(null / 1).toBe(0);
+  });
+
+  it('broken js: exp', () => {
+    // WE EXPECT THIS CALCULATION TO FAIL, OR RETURN NOTHING
+    // WE DO NOT EXPECT A LEGITIMATE VALUE
+    expect(Math.exp(null)).toBe(1);
+  });
+
+  it('exp', () => {
+    expect(exp(null)).toBe(null);
   });
 
   it('division', () => {
@@ -167,5 +181,13 @@ describe('math', () => {
     expect(div(0, 0)).toBe(null);
     expect(div(1, 0)).toBe(null);
     expect(div(null, 0)).toBe(null);
+  });
+
+  it('geomean', () => {
+    expect(geomean([null])).toBe(null);
+    expect(geomean([])).toBe(null);
+    expect(geomean([undefined])).toBe(null);
+    expect(geomean([0])).toBe(null);
+    expect(geomean([0, 10])).toBeCloseTo(10);
   });
 });

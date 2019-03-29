@@ -128,8 +128,14 @@ function average(values) {
   return total / count;
 }
 
+function exp(value) {
+  if (missing(value)) return null;
+
+  return Math.exp(value);
+}
+
 function geomean(values) {
-  return Math.exp(average(values.map(Math.log)));
+  return exp(average(values.map(Math.log)));
 }
 
 function max(values) {
@@ -192,4 +198,5 @@ export {
   average,
   geomean,
   log10,
+  exp,
 };
