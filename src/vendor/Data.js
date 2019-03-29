@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 
-import { toPairs } from './queryOps';
+import { toPairs } from './vectors';
 import { Log } from './logs';
 import {
   coalesce,
@@ -17,11 +17,7 @@ const Data = (key, value) => {
     Log.error('expecting a string key');
   }
 
-  const output = {};
-
-  output[key] = value;
-
-  return output;
+  return { [key]: value };
 };
 
 Data.zip = (keys, values) => {

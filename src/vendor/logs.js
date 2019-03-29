@@ -2,7 +2,7 @@
 
 import { coalesce, exists, isString, missing } from './utils';
 import Template from './Template';
-import { frum } from './queryOps';
+import { chainFrom } from './vectors';
 
 //   Error
 //       at Function.Object.<anonymous>.Log.error (C:\Users\kyle\code\firefox-health-dashboard\src\vendor\errors.jsx:174:9)
@@ -23,7 +23,7 @@ function parseStack(stackString) {
   if (missing(stackString)) return [];
 
   return stackString.split('\n').map(line =>
-    frum(stackPatterns)
+    chainFrom(stackPatterns)
       .map(stackPattern => {
         const parts = stackPattern.exec(line);
 

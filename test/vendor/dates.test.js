@@ -7,6 +7,10 @@ describe('dates', () => {
     expect(Date.newInstance('1970 jan 1').unix()).toEqual(0);
   });
 
+  it('epoch constant', () => {
+    expect(Date.EPOCH.unix()).toEqual(0);
+  });
+
   it('today', () => {
     expect(Date.today().unix() % (24 * 60 * 60)).toEqual(0);
   });

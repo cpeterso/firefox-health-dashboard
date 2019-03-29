@@ -2,7 +2,7 @@
 /* eslint-disable camelcase */
 import { toQueryString } from './convert';
 import { missing, toArray, first } from './utils';
-import { frum, toPairs } from './queryOps';
+import { chainFrom, toPairs } from './vectors';
 import { TREEHERDER } from './perf-goggles';
 import fetchJson from '../utils/fetchJson';
 import { jx } from './jx/expressions';
@@ -28,7 +28,7 @@ const getAllOptions = (async () => {
   const response = await fetch(`${TREEHERDER}/api/optioncollectionhash/`);
   const output = await response.json();
 
-  return frum(output)
+  return chainFrom(output)
     .map(({ option_collection_hash, options }) => [
       first(options).name,
       option_collection_hash,
@@ -72,13 +72,13 @@ const getFramework = async framework => {
 const getSignatures = async (framework, condition) => {
   await Promise.all(toArray(framework).map(getFramework));
 
-  return frum(PERFHERDER.signatures).filter(jx(condition));
+  return chainFrom(PERFHERDER.signatures).filter(jx(condition));
 };
 
 const dataCache = {};
 const getDataBySignature = async metadatas => {
   // SCHEDULE ANY MISSING SIGNATURES
-  frum(metadatas)
+  chainFrom(metadatas)
     .filter(({ signature }) => missing(dataCache[signature]))
     .chunk(20)
     .forEach(chunkOfMetas => {
@@ -94,7 +94,7 @@ const getDataBySignature = async metadatas => {
       })();
 
       // EACH dataCache IS A PROMISE TO THE SPECIFIC DATA
-      frum(chunkOfMetas).forEach(meta => {
+      chainFrom(chunkOfMetas).forEach(meta => {
         dataCache[meta.signature] = (async () =>
           (await getData)[meta.signature].map(({ value, push_timestamp }) => ({
             value,
@@ -111,7 +111,7 @@ const getData = async (framework, condition) => {
   const signatures = await getSignatures(framework, condition);
   const output = await getDataBySignature(signatures);
 
-  return frum(output).flatten();
+  return chainFrom(output).flatten();
 };
 
 export { getSignatures, getData };

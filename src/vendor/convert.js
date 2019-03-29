@@ -1,5 +1,5 @@
 import { parse } from 'query-string';
-import { frum, leaves, length, toPairs } from './queryOps';
+import { chainFrom, leaves, length, toPairs } from './vectors';
 import { Log } from './logs';
 import {
   exists,
@@ -73,7 +73,7 @@ function prettyJSON(json, maxDepth) {
 
   try {
     if (isArray(json)) {
-      const output = frum(json)
+      const output = chainFrom(json)
         .map(v => {
           if (v === undefined) return;
 

@@ -3,7 +3,7 @@
 // https://docs.google.com/spreadsheets/d/1xuYdCodmiFY-NmAXq_8WTcO_WMfsZVNNeiGCr-w2xAY/edit#gid=0
 
 import Data from "../vendor/Data";
-import { frum } from "../vendor/queryOps";
+import { chainFrom } from "../vendor/vectors";
 import { missing } from "../vendor/utils";
 import { Log } from "../vendor/logs";
 import { TP6_TESTS } from "../quantum/config";
@@ -47,9 +47,9 @@ const fennec64 =
     ]
   };
 
-const tests = frum(TP6_TESTS).select('id');
+const tests = chainFrom(TP6_TESTS).select('id');
 
-const g5Reference = frum(fennec64.data)
+const g5Reference = chainFrom(fennec64.data)
   .map(row => Data.zip(fennec64.header, row))
   .leftJoin("nothing", platforms, "nothing")
   .map(row => tests.map(test => ({ test, value: row[test], ...row })))
@@ -74,7 +74,7 @@ const g5Reference = frum(fennec64.data)
         });
       }
 
-      return row.raw[0].value;
+      return row.raw[0].value * 0.80; // "onload event is >20% faster than Fennec 64"
     },
   })
   .select("value");

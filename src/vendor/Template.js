@@ -1,5 +1,5 @@
 import { array, coalesce, isArray, isData, isString, missing } from './utils';
-import { toPairs } from './queryOps';
+import { toPairs } from './vectors';
 import { Log } from './logs';
 import Data from './Data';
 import strings from './strings';

@@ -3,11 +3,13 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import StatusWidget from '../StatusWidget';
 import CONFIG from '../../utils/nimbledroid/config';
-import { frum } from '../../vendor/queryOps';
+import { chainFrom } from '../../vendor/vectors';
 
 const SummaryTable = ({ content = [], header }) => {
   const compareName = CONFIG.packageIdLabels[CONFIG.baseProduct];
-  const compareColumn = frum(header).findIndex(name => name === compareName);
+  const compareColumn = chainFrom(header).findIndex(
+    name => name === compareName
+  );
 
   return (
     <table className="summary-table">

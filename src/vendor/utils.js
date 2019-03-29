@@ -10,7 +10,13 @@ function array(length = 0) {
 
 function missing(value) {
   // return true if value is null, or undefined, or not a legit value
-  return value == null || Number.isNaN(value) || value === '';
+  return (
+    value == null ||
+    value === '' ||
+    Number.isNaN(value) ||
+    value === Number.POSITIVE_INFINITY ||
+    value === Number.NEGATIVE_INFINITY
+  );
 }
 
 function exists(value) {
@@ -67,7 +73,7 @@ function isNumeric(n) {
     );
   }
 
-  return !Number.isNaN(n) && Number.isFinite(n);
+  return Number.isFinite(n);
 }
 
 function isInteger(n) {
@@ -93,10 +99,6 @@ function isFunction(f) {
   return typeof f === 'function';
 }
 
-function literalField(fieldname) {
-  return fieldname.replace(/\./g, '\\.');
-}
-
 /*
 expecting Array of Arrays, return transpose
  */
@@ -106,6 +108,17 @@ function zip(...args) {
   return array(length).map((_, i) => args.map(a => a[i]));
 }
 
+/*
+interpret a string with possible dots as a literal key, not a path
+ */
+function literalField(fieldname) {
+  return fieldname.replace(/\./g, '\\.');
+}
+
+/*
+accept dot-delimited path name
+return array of keys representing the same
+ */
 function splitField(fieldname) {
   return fieldname
     .replace(/\\\./g, '\b')
@@ -113,10 +126,17 @@ function splitField(fieldname) {
     .map(v => v.replace(/[\b]/g, '.'));
 }
 
+/*
+accept an array of keys representing a path
+return dot-delimited path name
+ */
 function joinField(path) {
   return path.map(literalField).join('.');
 }
 
+/*
+join two dot-delimited path names
+ */
 function concatField(...many) {
   let output = '.';
 

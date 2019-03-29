@@ -11,7 +11,7 @@ import {
   missing,
   toArray,
 } from '../utils';
-import { ArrayWrapper, frum, toPairs } from '../queryOps';
+import { ArrayWrapper, chainFrom, toPairs } from '../vectors';
 import { Log } from '../logs';
 import { NULL } from './domains';
 import Matrix from './Matrix';
@@ -80,7 +80,7 @@ class Cube {
   leftJoin({ name, edges, matrix }) {
     // VERIFY EDGES ARE IDENTICAL
     let different = false;
-    const [newEdges, ordering, dims] = frum(edges)
+    const [newEdges, ordering, dims] = chainFrom(edges)
       .map(foreignEdge => {
         const foreignParts = foreignEdge.domain.partitions;
         const selfEdge = this._getEdgeByName(foreignEdge.name);
@@ -93,12 +93,12 @@ class Cube {
           ];
         const selfParts = selfEdge.domain.partitions;
         // MAP foreignEdge PARTS TO selfEdge parts
-        const valToIndex = frum(selfParts)
+        const valToIndex = chainFrom(selfParts)
           .enumerate()
           .map((p, i) => [i, p.value])
           .args()
           .fromPairs();
-        const newPart = frum(foreignParts)
+        const newPart = chainFrom(foreignParts)
           .select('value')
           .filter(p => missing(valToIndex[p]))
           .toArray();
@@ -152,7 +152,7 @@ class Cube {
 
   /*
    * return a generator over all parts of all given edges
-   * generator returns [coord, cube] pairs
+   * generator returns [cube, coord] pairs
    */
   sequence(requestedEdges, options = {}) {
     const { nulls = true } = options;

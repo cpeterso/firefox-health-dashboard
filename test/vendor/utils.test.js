@@ -7,8 +7,9 @@ import {
   isNumeric,
   literalField,
   splitField,
+  missing,
 } from '../../src/vendor/utils';
-import { frum } from '../../src/vendor/queryOps';
+import { chainFrom } from '../../src/vendor/vectors';
 import GMTDate from '../../src/vendor/dates';
 import { Duration } from '../../src/vendor/durations';
 
@@ -85,13 +86,13 @@ describe('utils', () => {
     expect(toArray(true)).toEqual([true]);
     expect(toArray(false)).toEqual([false]);
     expect(toArray({})).toEqual([{}]);
-    expect(toArray(frum([]))).toEqual([]);
+    expect(toArray(chainFrom([]))).toEqual([]);
   });
 
   it('isData', () => {
     expect(isData({})).toBe(true);
     expect(isData([])).toBe(false);
-    expect(isData(frum([]))).toBe(false);
+    expect(isData(chainFrom([]))).toBe(false);
     expect(isData(() => 0)).toBe(false);
     expect(isData(GMTDate.now())).toBe(false);
     expect(isData(new Duration())).toBe(false);
@@ -99,5 +100,15 @@ describe('utils', () => {
     expect(isData('test')).toBe(false);
     expect(isData(undefined)).toBe(false);
     expect(isData(null)).toBe(false);
+  });
+
+  it('missing', () => {
+    expect(missing(Number.POSITIVE_INFINITY)).toBe(true);
+    expect(missing(Number.NEGATIVE_INFINITY)).toBe(true);
+    expect(missing(Number.NaN)).toBe(true);
+    expect(missing(null)).toBe(true);
+    expect(missing(undefined)).toBe(true);
+    expect(missing('')).toBe(true);
+    expect(missing(0)).toBe(false);
   });
 });

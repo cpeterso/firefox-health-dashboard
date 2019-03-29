@@ -16,7 +16,7 @@ import {
   zip,
   array,
 } from './utils';
-import { sum, min, max, average } from './math';
+import { sum, min, max, geomean, average } from './math';
 import { Log } from './logs';
 import Data from './Data';
 import { jx } from './jx/expressions';
@@ -24,7 +24,7 @@ import Edge from './jx/Edge';
 import Matrix from './jx/Matrix';
 import Cube from './jx/Cube';
 
-let internalFrum = null;
+let internalchainFrom = null;
 let internalToPairs = null;
 const getI = i => m => m[i];
 
@@ -33,7 +33,7 @@ function preSelector(columnName) {
 
   if (isArray(columnName)) {
     // select many columns
-    return internalFrum(columnName)
+    return internalchainFrom(columnName)
       .sortBy()
       .map(name => {
         if (isString(name)) return [[row => Data.get(row, name), name]];
@@ -61,7 +61,7 @@ function selector(columnName) {
   /*
      const row = { a: 1, b: '2', c: 3 };
 
-     convert string into function that selects property from row
+     convert string into function that extracts property from row
          selector('b')(row) === '2'
 
      convert array of strings into function that extracts properties from a row
@@ -253,7 +253,7 @@ class ArrayWrapper {
 
       for (const [value] of argslist) {
         if (acc.length === size) {
-          yield [internalFrum(acc), count];
+          yield [internalchainFrom(acc), count];
           count += 1;
           acc = [];
         }
@@ -261,7 +261,7 @@ class ArrayWrapper {
         acc.push(value);
       }
 
-      if (acc.length > 0) yield [internalFrum(acc), count];
+      if (acc.length > 0) yield [internalchainFrom(acc), count];
     }
 
     return new ArrayWrapper(() => output(this.argslist));
@@ -417,6 +417,10 @@ class ArrayWrapper {
     return average(this);
   }
 
+  geomean() {
+    return geomean(this);
+  }
+
   max() {
     return max(this);
   }
@@ -488,7 +492,7 @@ class ArrayWrapper {
   }
 }
 
-function frum(list, ...more) {
+function chainFrom(list, ...more) {
   if (list instanceof ArrayWrapper) {
     return list;
   }
@@ -509,7 +513,7 @@ function frum(list, ...more) {
   });
 }
 
-internalFrum = frum;
+internalchainFrom = chainFrom;
 
 /*
  * convert Object (or Data) into [value, key] pairs
@@ -566,7 +570,7 @@ function extendWrapper(methods) {
   internalToPairs(methods).forEach((method, name) => {
     // USE function(){} DECLARATION TO BIND this AT CALL TIME
     ArrayWrapper.prototype[name] = function anonymous(...args) {
-      return internalFrum(method(this.toArray(), ...args));
+      return internalchainFrom(method(this.toArray(), ...args));
     };
   });
 }
@@ -581,12 +585,12 @@ extendWrapper({
   // where each element has properties; from one of each list: { ...a, ...b }
   // but only include elements where b[propB]==a[propA] (b ∈ listB, a ∈ listA)
   leftJoin: function leftJoin(listA, propA, listB, propB) {
-    const lookup = internalFrum(listB)
+    const lookup = internalchainFrom(listB)
       .groupBy(propB)
       .fromPairs();
     const getterA = jx(propA);
 
-    return internalFrum(listA)
+    return internalchainFrom(listA)
       .map(rowA => lookup[getterA(rowA)].map(rowB => ({ ...rowA, ...rowB })))
       .flatten();
   },
@@ -600,4 +604,4 @@ extendWrapper({
   },
 });
 
-export { frum, toPairs, leaves, first, last, length, ArrayWrapper };
+export { chainFrom, toPairs, leaves, first, last, length, ArrayWrapper };

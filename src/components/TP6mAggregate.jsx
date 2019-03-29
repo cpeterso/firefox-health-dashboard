@@ -3,9 +3,9 @@ import React, { Component } from 'react';
 import Grid from '@material-ui/core/Grid/Grid';
 import CircularProgress from '@material-ui/core/CircularProgress/CircularProgress';
 import { withStyles } from '@material-ui/core/styles';
-import { frum } from '../vendor/queryOps';
+import { chainFrom } from '../vendor/vectors';
 import { last, missing } from '../vendor/utils';
-import { average } from '../vendor/math';
+import { geomean } from '../vendor/math';
 import { TP6_TESTS, TP6M_PAGES } from '../quantum/config';
 import { getData } from '../vendor/perfherder';
 import generateOptions from '../utils/chartJs/generateOptions';
@@ -39,9 +39,9 @@ class TP6mAggregate extends Component {
 
   async componentDidMount() {
     // ALL LOADTIME FOR ALL SUITES IN SET
-    const pages = frum(TP6M_PAGES);
+    const pages = chainFrom(TP6M_PAGES);
     // WHAT ARE THE SIGNATURES OF THE loadtime?
-    const tests = frum(TP6_TESTS).select('id');
+    const tests = chainFrom(TP6_TESTS).select('id');
     const readData = timer('read data');
     const data = await getData(pages.select('framework'), {
       and: [
@@ -87,24 +87,42 @@ class TP6mAggregate extends Component {
         ],
       })
       .window({
+        // INDEX OF DATE MARKS THE END OF THE DATA
+        name: 'afterLastGoodDate',
+        edges: ['test', 'suite', 'platform'],
+        value: row =>
+          row.measured.length -
+          row.measured
+            .slice()
+            .reverse()
+            .findIndex(m => m.length > 0),
+      })
+      .window({
         // CHECK EACH TEST/SUITE/DAY FOR MISSING VALUES
         name: 'daily',
         edges: ['test', 'suite', 'platform'],
         along: ['pushDate'],
-        value: value =>
-          frum(value.measured)
+        value: (row, num, rows) => {
+          const { measured, afterLastGoodDate } = row;
+
+          if (num > 0 && num < afterLastGoodDate && measured.length === 0) {
+            return rows[num - 1];
+          }
+
+          return chainFrom(measured)
             .select('value')
-            .average(),
+            .average();
+        },
       })
       .extend({ name: 'reference', cube: g5Reference })
       .window({
         name: 'result',
         edges: ['test', 'platform', 'pushDate'],
         value: row =>
-          frum(row.daily, row.reference.value)
+          chainFrom(row.daily, row.reference.value)
             // IF NO REFERENCE VALUE FOR SUITE, DO NOT INCLUDE IN AGGREGATE
             .map((d, r) => (missing(r) ? null : d))
-            .average(),
+            .geomean(),
       })
       .window({
         name: 'ref',
@@ -114,7 +132,7 @@ class TP6mAggregate extends Component {
 
           if (missing(lastMeasure)) return null;
 
-          return average(row.reference.value);
+          return geomean(row.reference.value);
         },
       })
       .select(['result', 'ref']);
@@ -142,7 +160,7 @@ class TP6mAggregate extends Component {
 
     return (
       <Grid container spacing={24}>
-        {frum(TP6_TESTS)
+        {chainFrom(TP6_TESTS)
           .filter(row => row.id !== 'fcp')
           .enumerate()
           .map(({ label, id }) => {

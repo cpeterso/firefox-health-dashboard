@@ -1,5 +1,5 @@
 /* global describe, it */
-import { frum, leaves, toPairs } from '../../src/vendor/queryOps';
+import { chainFrom, leaves, toPairs } from '../../src/vendor/vectors';
 
 const data = [
   { a: 1 },
@@ -12,7 +12,7 @@ const data = [
 describe('vectors', () => {
   it('select Array', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .select(['a', 'd'])
         .toArray()
     ).toEqual([
@@ -26,7 +26,7 @@ describe('vectors', () => {
 
   it('select rename', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .select({ x: 'a', y: 'd' })
         .toArray()
     ).toEqual([
@@ -40,7 +40,7 @@ describe('vectors', () => {
 
   it('select deep array', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .select({ x: ['a', 'd'] })
         .toArray()
     ).toEqual([
@@ -54,7 +54,7 @@ describe('vectors', () => {
 
   it('select value', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .select('a')
         .toArray()
     ).toEqual([1, { b: 0, c: 1 }, null, null, null]);
@@ -62,7 +62,7 @@ describe('vectors', () => {
 
   it('enumerate', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .enumerate()
         .map((v, i) => i)
         .toArray()
@@ -71,7 +71,7 @@ describe('vectors', () => {
 
   it('limit', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .limit(2)
         .toArray()
     ).toEqual([{ a: 1 }, { a: { b: 0, c: 1 }, d: 3 }]);
@@ -79,7 +79,7 @@ describe('vectors', () => {
 
   it('where', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .where({ d: 3 })
         .toArray()
     ).toEqual([{ a: { b: 0, c: 1 }, d: 3 }, { d: 3 }]);
@@ -87,7 +87,7 @@ describe('vectors', () => {
 
   it('missing', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .missing('d')
         .toArray()
     ).toEqual([{ a: 1 }, { a: null, e: 3 }, null]);
@@ -95,7 +95,7 @@ describe('vectors', () => {
 
   it('groupBy 2', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .groupBy(['d', 'e'])
         .map((v, g) => [v, g])
         .toArray()
@@ -108,7 +108,7 @@ describe('vectors', () => {
 
   it('index ok', () => {
     expect(
-      frum(data)
+      chainFrom(data)
         .exists('a')
         .index('d')
     ).toEqual({
@@ -118,7 +118,7 @@ describe('vectors', () => {
   });
 
   it('index error', () => {
-    expect(() => frum(data).index('d')).toThrow();
+    expect(() => chainFrom(data).index('d')).toThrow();
   });
 
   it('leaves', () => {

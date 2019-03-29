@@ -128,6 +128,10 @@ function average(values) {
   return total / count;
 }
 
+function geomean(values) {
+  return Math.exp(average(values.map(Math.log)));
+}
+
 function max(values) {
   let max = null;
 
@@ -186,5 +190,6 @@ export {
   count,
   sum,
   average,
+  geomean,
   log10,
 };
