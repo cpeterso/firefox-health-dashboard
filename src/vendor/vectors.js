@@ -323,7 +323,13 @@ class ArrayWrapper {
     });
   }
 
+  /*
+  groupby, but with all combinations of all columns grouped
+  for 2d this is a pivot table, for more dimensions it is a "cube"
+  google "sql group by cube" for more information
+   */
   edges({ name = '.', edges, zero = array }) {
+
     const normalizedEdges = edges.map(Edge.newInstance);
     const dims = normalizedEdges.map(e => e.domain.partitions.length);
     const matrix = new Matrix({ dims, zero });
@@ -600,7 +606,7 @@ extendWrapper({
   },
 
   reverse: function reverse(list) {
-    return list.reverse();
+    return list.slice().reverse();
   },
 });
 
